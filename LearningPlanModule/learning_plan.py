@@ -1,5 +1,6 @@
-import datetime
-#from langchain.chat_models import ChatOpenAI
+import json
+import os
+from datetime import date, timedelta, datetime
 from langchain_openai import ChatOpenAI
 
 
@@ -39,13 +40,13 @@ class LearningPlan:
         Generate a learning plan based on quiz analysis.
         """
         critical_areas, moderate_areas, good_areas = self.analyze_quiz_results()
-        plan_start_date = datetime.date.today()
+        plan_start_date = date.today()
         plan = []
 
         # Critical areas (High priority)
         for i, topic in enumerate(critical_areas):
             plan.append({
-                'date': plan_start_date + datetime.timedelta(days=i * 2),
+                'date': plan_start_date + timedelta(days=i * 2),
                 'priority': 'High priority',
                 'topic': topic,
                 'materials': self.recommend_materials(topic)
@@ -55,7 +56,7 @@ class LearningPlan:
         offset = len(critical_areas)
         for i, topic in enumerate(moderate_areas, start=offset):
             plan.append({
-                'date': plan_start_date + datetime.timedelta(days=i * 2),
+                'date': plan_start_date + timedelta(days=i * 2),
                 'priority': 'Medium priority',
                 'topic': topic,
                 'materials': self.recommend_materials(topic)
@@ -65,7 +66,7 @@ class LearningPlan:
         offset += len(moderate_areas)
         for i, topic in enumerate(good_areas, start=offset):
             plan.append({
-                'date': plan_start_date + datetime.timedelta(days=i * 2),
+                'date': plan_start_date + timedelta(days=i * 2),
                 'priority': 'Low priority',
                 'topic': topic,
                 'materials': self.recommend_materials(topic)
@@ -91,19 +92,17 @@ class LearningPlan:
             print(f"Error while generating materials for topic '{topic}': {e}")
             return ["No materials available"]
 
-
-
     def generate_plan_from_prompt(self, user_input):
         """
         Generate a learning plan based on user's custom input.
         """
-        plan_start_date = datetime.date.today()
+        plan_start_date = date.today()
         plan = []
 
         goals = user_input.get("goals", [])
         for i, goal in enumerate(goals):
             plan.append({
-                'date': plan_start_date + datetime.timedelta(days=i * 2),
+                'date': plan_start_date + timedelta(days=i * 2),
                 'priority': 'User-defined',
                 'topic': goal,
                 'materials': self.recommend_materials(goal)
@@ -125,3 +124,29 @@ class LearningPlan:
             for material in entry['materials']:
                 print(f" - {material}")
             print("\n")
+
+    def save_to_file(self, base_dir="data/learning_plans/"):
+        """
+        Save the generated learning plan to a JSON file with timestamp and user name.
+        """
+        os.makedirs(base_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{self.user_name}_plan_{timestamp}.json"
+        path = os.path.join(base_dir, filename)
+
+        try:
+            plan_serializable = [
+                {
+                    **entry,
+                    "date": entry["date"].isoformat()
+                }
+                for entry in self.learning_plan
+            ]
+
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(plan_serializable, f, indent=4, ensure_ascii=False)
+
+            print(f"✅ Plan saved to {path}")
+        except Exception as e:
+            print(f"❌ Error saving plan: {e}")

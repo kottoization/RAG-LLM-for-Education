@@ -77,6 +77,7 @@ def main_menu():
                 plan = LearningPlan(user_name=user_name)
                 plan.generate_plan_from_prompt(user_input)
                 plan.display_plan()
+                plan.save_to_file()
             else:
                 print("Invalid choice. Please try again.")
         elif choice == "4":
