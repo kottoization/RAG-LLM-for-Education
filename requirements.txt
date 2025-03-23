@@ -2,7 +2,7 @@
 langchain==0.3.14
 langchain-core==0.3.29
 langchain-text-splitters==0.3.5
-langchain-openai>=0.1.7  # Dodano, aby uwzględnić brakujące zależności
+langchain-openai>=0.1.8  # Dodano, aby uwzględnić brakujące zależności
 langchain-community
 langsmith==0.2.10
 openai==1.59.6

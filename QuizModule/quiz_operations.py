@@ -2,9 +2,8 @@ from tools.quiz_prompts import (
     generate_topic_list_prompt,
     generate_questions_prompt,
 )
-# from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI
 # from langchain_core.runnables import RunnableParallel, RunnableLambda
-from langchain.chat_models import ChatOpenAI
 from langchain.schema.runnable import RunnableParallel, RunnableLambda
 
 from LearningPlanModule.learning_plan import LearningPlan
