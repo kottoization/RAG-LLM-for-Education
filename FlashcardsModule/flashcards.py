@@ -1,0 +1,124 @@
+import json
+import os
+import re
+from datetime import datetime
+from langchain_openai import ChatOpenAI
+
+
+class Flashcard:
+    """
+    Represents a single flashcard with a question and an answer.
+    """
+    def __init__(self, question: str, answer: str):
+        self.question = question.strip()
+        self.answer = answer.strip()
+
+    def to_dict(self):
+        return {
+            "question": self.question,
+            "answer": self.answer
+        }
+
+    @staticmethod
+    def from_dict(data):
+        return Flashcard(question=data["question"], answer=data["answer"])
+
+
+class FlashcardSet:
+    """
+    Manages a set of flashcards: generation, review, and saving.
+    """
+    def __init__(self, topic: str, flashcards=None):
+        self.topic = topic.strip()
+        self.flashcards = flashcards if flashcards else []
+
+    def add_flashcard(self, flashcard: Flashcard):
+        self.flashcards.append(flashcard)
+
+    def generate_from_quiz_text(self, raw_text: str):
+        """
+        Parses quiz-style text and extracts flashcards from question blocks.
+        """
+        blocks = raw_text.strip().split("\n\n")
+        for block in blocks:
+            try:
+                question_match = re.search(r"Question:\s*(.*)", block)
+                correct_match = re.search(r"Correct Answer:\s*([a-d])", block)
+                options = re.findall(r"[a-d]\)\s*(.*)", block)
+
+                if question_match and correct_match and options:
+                    idx = ord(correct_match.group(1).lower()) - ord('a')
+                    answer = options[idx]
+                    self.add_flashcard(Flashcard(question=question_match.group(1), answer=answer))
+            except Exception as e:
+                print(f"⚠️ Error parsing block: {e}")
+
+    def generate_from_prompt(self, topic_prompt: str):
+        """
+        Uses an LLM to generate flashcards based on a topic prompt.
+        """
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
+
+        prompt = (
+            f"You are an expert educator.\n"
+            f"Generate a complete, high-quality list of flashcards for the topic: \"{topic_prompt}\".\n"
+            f"Each flashcard should:\n"
+            f"- Cover a key concept, definition, theorem, or important fact.\n"
+            f"- Have a clear, concise question (Q:) and a direct, accurate answer (A:)\n"
+            f"- Format:\n"
+            f"Q: ...\nA: ...\n\n"
+            f"Only include flashcards. Skip introductions and explanations."
+        )
+
+        try:
+            response = llm.invoke(prompt)
+            raw_output = response.content
+            pairs = re.findall(r"Q:\s*(.+?)\nA:\s*(.+?)(?=\nQ:|\Z)", raw_output, re.DOTALL)
+
+            for q, a in pairs:
+                self.add_flashcard(Flashcard(q.strip(), a.strip()))
+
+            print(f"✅ Generated {len(self.flashcards)} flashcards from prompt.")
+        except Exception as e:
+            print(f"❌ Error generating flashcards from prompt: {e}")
+
+    def run_cli_review(self):
+        """
+        CLI for reviewing flashcards. Asks user for input and shows correct answer.
+        """
+        print(f"\n📚 Reviewing flashcards for topic: {self.topic}")
+        for i, card in enumerate(self.flashcards, start=1):
+            print(f"\n{i}. {card.question}")
+            input("Your answer: ")
+            print(f"✅ Correct answer: {card.answer}")
+
+    def save_to_file(self, base_dir="data/flashcards/"):
+        """
+        Saves the flashcard set to a JSON file.
+        """
+        os.makedirs(base_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{self.topic}_flashcards_{timestamp}.json"
+        path = os.path.join(base_dir, filename)
+
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump([fc.to_dict() for fc in self.flashcards], f, indent=4, ensure_ascii=False)
+            print(f"💾 Flashcards saved to {path}")
+        except Exception as e:
+            print(f"❌ Failed to save flashcards: {e}")
+
+    @staticmethod
+    def load_from_file(path: str):
+        """
+        Loads a flashcard set from a JSON file.
+        """
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                topic = os.path.basename(path).split("_flashcards_")[0]
+                cards = [Flashcard.from_dict(fc) for fc in data]
+                return FlashcardSet(topic=topic, flashcards=cards)
+        except Exception as e:
+            print(f"❌ Failed to load flashcards: {e}")
+            return None

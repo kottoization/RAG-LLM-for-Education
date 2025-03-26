@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from QuizModule.quiz_operations import generate_quiz, generate_learning_plan_from_quiz
 from LearningPlanModule.learning_plan import LearningPlan
+from FlashcardsModule.flashcards import FlashcardSet
 from langchain_openai import ChatOpenAI
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
 import os
@@ -49,7 +50,9 @@ def main_menu():
         print("1. Chat with the bot (no articles required)")
         print("2. Generate a quiz")
         print("3. Create a personalized learning plan")
-        print("4. Exit")
+        print("4. Flashcards: Generate from prompt")
+        print("5. Flashcards: Review from file")
+        print("6. Exit")
         choice = input("Enter the number of your choice: ")
 
         if choice == "1":
@@ -81,6 +84,17 @@ def main_menu():
             else:
                 print("Invalid choice. Please try again.")
         elif choice == "4":
+            topic = input("Enter a topic for flashcard generation: ")
+            flashcards = FlashcardSet(topic)
+            flashcards.generate_from_prompt(topic_prompt=topic)
+            flashcards.run_cli_review()
+            flashcards.save_to_file()
+        elif choice == "5":
+            path = input("Enter path to flashcard JSON file: ")
+            flashcards = FlashcardSet.load_from_file(path)
+            if flashcards:
+                flashcards.run_cli_review()
+        elif choice == "6":
             print("Goodbye!")
             break
         else:
