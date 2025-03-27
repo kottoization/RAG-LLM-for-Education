@@ -60,14 +60,17 @@ class FlashcardSet:
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
 
         prompt = (
-            f"You are an expert educator.\n"
-            f"Generate a complete, high-quality list of flashcards for the topic: \"{topic_prompt}\".\n"
-            f"Each flashcard should:\n"
-            f"- Cover a key concept, definition, theorem, or important fact.\n"
-            f"- Have a clear, concise question (Q:) and a direct, accurate answer (A:)\n"
-            f"- Format:\n"
-            f"Q: ...\nA: ...\n\n"
-            f"Only include flashcards. Skip introductions and explanations."
+            f"You are an expert educator preparing students for a rigorous test or exam.\n"
+            f"Generate a high-quality, detailed list of flashcards for the topic: \"{topic_prompt}\".\n"
+            f"The flashcards should include:\n"
+            f"- definitions of core concepts\n"
+            f"- names and explanations of key theorems or formulas\n"
+            f"- concrete, technical facts that are often tested\n"
+            f"- pay attention to the detailed domain knowledge needed by specialists at the level indicated by the user\n"
+            f"Each flashcard must follow this format:\n"
+            f"Q: [Clear, technical question]\n"
+            f"A: [Precise, exam-focused answer]\n\n"
+            f"Don't include explanations, examples, or anything besides flashcards."
         )
 
         try:
@@ -82,15 +85,15 @@ class FlashcardSet:
         except Exception as e:
             print(f"❌ Error generating flashcards from prompt: {e}")
 
-    def run_cli_review(self):
-        """
-        CLI for reviewing flashcards. Asks user for input and shows correct answer.
-        """
-        print(f"\n📚 Reviewing flashcards for topic: {self.topic}")
-        for i, card in enumerate(self.flashcards, start=1):
-            print(f"\n{i}. {card.question}")
-            input("Your answer: ")
-            print(f"✅ Correct answer: {card.answer}")
+    # def run_cli_review(self):
+    #     """
+    #     CLI for reviewing flashcards. Asks user for input and shows correct answer.
+    #     """
+    #     print(f"\n📚 Reviewing flashcards for topic: {self.topic}")
+    #     for i, card in enumerate(self.flashcards, start=1):
+    #         print(f"\n{i}. {card.question}")
+    #         input("Your answer: ")
+    #         print(f"✅ Correct answer: {card.answer}")
 
     def save_to_file(self, base_dir="data/flashcards/"):
         """
@@ -103,7 +106,7 @@ class FlashcardSet:
 
         try:
             with open(path, "w", encoding="utf-8") as f:
-                json.dump([fc.to_dict() for fc in self.flashcards], f, indent=4, ensure_ascii=False)
+                json.dump(self.to_dict_list(), f, indent=4, ensure_ascii=False)
             print(f"💾 Flashcards saved to {path}")
         except Exception as e:
             print(f"❌ Failed to save flashcards: {e}")
@@ -122,3 +125,10 @@ class FlashcardSet:
         except Exception as e:
             print(f"❌ Failed to load flashcards: {e}")
             return None
+
+    def to_dict_list(self):
+        """
+        Returns list of flashcards as list of dicts (e.g. for JSON API).
+        """
+        return [fc.to_dict() for fc in self.flashcards]
+    

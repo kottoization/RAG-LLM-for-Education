@@ -87,7 +87,7 @@ def main_menu():
             topic = input("Enter a topic for flashcard generation: ")
             flashcards = FlashcardSet(topic)
             flashcards.generate_from_prompt(topic_prompt=topic)
-            flashcards.run_cli_review()
+            print(flashcards.to_dict_list())
             flashcards.save_to_file()
         elif choice == "5":
             path = input("Enter path to flashcard JSON file: ")
