@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from QuizModule.quiz_operations import generate_quiz, generate_learning_plan_from_quiz
 from LearningPlanModule.learning_plan import LearningPlan
+from SummaryModule.summary_generator import StudySummaryGenerator  # ❤️ nowy moduł
 from FlashcardsModule.flashcards import FlashcardSet
 from langchain_openai import ChatOpenAI
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
@@ -52,7 +53,8 @@ def main_menu():
         print("3. Create a personalized learning plan")
         print("4. Flashcards: Generate from prompt")
         print("5. Flashcards: Review from file")
-        print("6. Exit")
+        print("6. Generate TL;DR Summary")
+        print("7. Exit")
         choice = input("Enter the number of your choice: ")
 
         if choice == "1":
@@ -95,8 +97,15 @@ def main_menu():
             if flashcards:
                 flashcards.run_cli_review()
         elif choice == "6":
+            topic = input("Enter the topic or material for TL;DR summary: ")
+            summarizer = StudySummaryGenerator()
+            summary = summarizer.generate_summary(topic)
+            print("\n📘 Summary:\n")
+            print(summary)
+        elif choice == "7":
             print("Goodbye!")
             break
+
         else:
             print("Invalid choice. Please try again.")
 
