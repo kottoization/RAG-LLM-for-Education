@@ -1,6 +1,8 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
+# TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect. 
+
 class StudySummaryGenerator:
     """
     Generates a detailed study guide based on a topic – intended for learning, not just review.

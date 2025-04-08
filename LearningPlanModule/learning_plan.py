@@ -3,6 +3,7 @@ import os
 from datetime import date, timedelta, datetime
 from langchain_openai import ChatOpenAI
 
+# TODO: use cases from prompts for edu
 
 class LearningPlan:
     def __init__(self, user_name, quiz_results=None, user_goals=None):
