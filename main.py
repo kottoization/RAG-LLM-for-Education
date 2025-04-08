@@ -1,8 +1,9 @@
 from dotenv import load_dotenv
 from QuizModule.quiz_operations import generate_quiz, generate_learning_plan_from_quiz
 from LearningPlanModule.learning_plan import LearningPlan
-from SummaryModule.summary_generator import StudySummaryGenerator  # ❤️ nowy moduł
+from SummaryModule.summary_generator import StudySummaryGenerator
 from FlashcardsModule.flashcards import FlashcardSet
+from CheatSheetModule.cheatsheet_generator import CheatSheetGenerator
 from langchain_openai import ChatOpenAI
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
 import os
@@ -54,7 +55,9 @@ def main_menu():
         print("4. Flashcards: Generate from prompt")
         print("5. Flashcards: Review from file")
         print("6. Generate TL;DR Summary")
-        print("7. Exit")
+        print("7. Generate Cheat Sheet")
+        print("8. Exit")
+
         choice = input("Enter the number of your choice: ")
 
         if choice == "1":
@@ -103,8 +106,16 @@ def main_menu():
             print("\n📘 Summary:\n")
             print(summary)
         elif choice == "7":
+            topic = input("Enter the topic or material for the cheat sheet: ")
+            generator = CheatSheetGenerator()
+            cheatsheet = generator.generate_cheatsheet(topic)
+            print("\n📄 Cheat Sheet:\n")
+            print(cheatsheet)
+
+        elif choice == "8":
             print("Goodbye!")
             break
+
 
         else:
             print("Invalid choice. Please try again.")
