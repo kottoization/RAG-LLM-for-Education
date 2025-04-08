@@ -1,47 +1,48 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
-
 class StudySummaryGenerator:
     """
-    Generates a detailed, exam-focused summary based on a topic.
-    Applies the Pareto principle (80/20) to capture the most critical concepts.
-    Include all of the most important bullet points, definitions, equations or concepts that are necessasy for a test.
+    Generates a detailed study guide based on a topic – intended for learning, not just review.
+    Ideal for exam preparation.
     """
-    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.4):
+    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
 
         self.prompt = PromptTemplate.from_template(
             """
-You are an expert educational assistant specialized in preparing students for university-level exams.
+You are an expert university lecturer helping a student prepare for a difficult exam.
 
-Your task is to generate a **structured , comprehensive, exam-oriented study summary** based on the topic:
+Your task is to create a **detailed, well-structured study guide** for the following topic:
 "{input}"
 
-Requirements:
-- Apply the 80/20 principle – include only the 20% of content that covers 80% of what will be tested.
-- For each item (definition, theorem, formula), briefly explain **why it's important** or **when it is used**.
-- Cover:
-    - core definitions and terminology **with context**
-    - key theorems, concepts, and facts **with practical purpose**
-    - essential formulas, equations, or syntax (for technical subjects) **with typical usage**
-    - short examples **only if truly necessary for understanding**
-- Format the summary in a structured way using bullet points or clear sections.
-- Organized into sections (e.g. Definitions, Formulas, Theorems, Applications)
-- Write in a professional but simple and memory-friendly tone (ideal for final review).
-- Skip any irrelevant context, introductions, or general statements.
-- Keep it clean, useful, and ideal for exam revision.
+This is not a cheat sheet. Instead, it should be a **multi-section, rich summary** that could span multiple pages.
 
-The result should serve as a **concise yet complete revision sheet** for an upcoming test or exam.
+Include:
+- Clear and accurate definitions of core terms
+- Detailed explanations of major concepts
+- Examples for included concepts
+- Theorems and laws, with explanation and usage
+- Key formulas and symbols, written clearly and contextually
+- Representative examples that help explain how the knowledge is applied
+- Bullet lists or bold text to highlight what's most important
+- Contextual usage: Where/why this knowledge is applied in real tasks/tests
+- Where useful: diagrams, formulas, logical steps
 
-Respond ONLY with the structured summary.
+Style:
+- Use markdown-like formatting (titles, bullet points, code blocks)
+- Clear separation of sections
+- Friendly and slightly explanatory tone (like a good tutor)
+
+IMPORTANT:
+- Make it long enough to cover the topic as if preparing a student to pass an exam
+- Avoid conversational tone – this should be structured content
+
+Only output the content. No introductions or commentary.
 """
         )
 
     def generate_summary(self, input_text: str) -> str:
-        """
-        Generates a detailed exam-style study summary from user input.
-        """
         chain = self.prompt | self.llm
         response = chain.invoke({"input": input_text})
         return response.content
