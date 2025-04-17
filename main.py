@@ -4,6 +4,7 @@ from LearningPlanModule.learning_plan import LearningPlan
 from SummaryModule.summary_generator import StudySummaryGenerator
 from FlashcardsModule.flashcards import FlashcardSet
 from CheatSheetModule.cheatsheet_generator import CheatSheetGenerator
+from tools.language_handler import LanguageHandler
 from langchain_openai import ChatOpenAI
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
 import os
@@ -49,6 +50,7 @@ def main_menu():
     """
     while True:
         print("\nSelect an option:")
+        print("0. Set preferred language")
         print("1. Chat with the bot (no articles required)")
         print("2. Generate a quiz")
         print("3. Create a personalized learning plan")
@@ -60,11 +62,20 @@ def main_menu():
 
         choice = input("Enter the number of your choice: ")
 
-        if choice == "1":
+        if choice == "0":
+            print("Enter your preferred language code (e.g. en, pl, de, fr) or 'auto' to detect automatically each time:")
+            lang = input("Language: ").strip()
+            LanguageHandler.set_language(lang)
+            print(f"Language set to: {lang}")
+
+        elif choice == "1":
             chat_with_bot()
+
         elif choice == "2":
             subject = input("Enter the subject for the quiz: ")
-            generate_quiz(subject)
+            language = LanguageHandler.choose_or_detect(subject)
+            generate_quiz(subject, language=language)
+
         elif choice == "3":
             print("\nSelect an option:")
             print("1. Take a quiz to generate a learning plan")
@@ -73,49 +84,57 @@ def main_menu():
 
             if sub_choice == "1":
                 subject = input("Enter the subject for the quiz: ")
-                quiz_results = generate_quiz(subject)  # Generates quiz and returns results
+                language = LanguageHandler.choose_or_detect(subject)
+                quiz_results = generate_quiz(subject, language=language)
                 user_name = input("Enter your name: ")
-                generate_learning_plan_from_quiz(user_name, quiz_results)
+                generate_learning_plan_from_quiz(user_name, quiz_results, language)
             elif sub_choice == "2":
                 user_name = input("Enter your name: ")
                 goals_input = input("Enter your learning goals (comma-separated): ")
+                language = LanguageHandler.choose_or_detect(goals_input)
                 user_input = {
                     "goals": [goal.strip() for goal in goals_input.split(",")]
                 }
-                plan = LearningPlan(user_name=user_name)
+                plan = LearningPlan(user_name=user_name, user_language=language)
                 plan.generate_plan_from_prompt(user_input)
                 plan.display_plan()
                 plan.save_to_file()
             else:
                 print("Invalid choice. Please try again.")
+
         elif choice == "4":
             topic = input("Enter a topic for flashcard generation: ")
+            language = LanguageHandler.choose_or_detect(topic)
             flashcards = FlashcardSet(topic)
-            flashcards.generate_from_prompt(topic_prompt=topic)
+            flashcards.generate_from_prompt(topic_prompt=topic, language=language)
             print(flashcards.to_dict_list())
             flashcards.save_to_file()
+
         elif choice == "5":
             path = input("Enter path to flashcard JSON file: ")
             flashcards = FlashcardSet.load_from_file(path)
             if flashcards:
                 flashcards.run_cli_review()
+
         elif choice == "6":
             topic = input("Enter the topic or material for TL;DR summary: ")
+            language = LanguageHandler.choose_or_detect(topic)
             summarizer = StudySummaryGenerator()
-            summary = summarizer.generate_summary(topic)
+            summary = summarizer.generate_summary(topic, language=language)
             print("\n📘 Summary:\n")
             print(summary)
+
         elif choice == "7":
             topic = input("Enter the topic or material for the cheat sheet: ")
+            language = LanguageHandler.choose_or_detect(topic)
             generator = CheatSheetGenerator()
-            cheatsheet = generator.generate_cheatsheet(topic)
+            cheatsheet = generator.generate_cheatsheet(topic, language=language)
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
 
         elif choice == "8":
             print("Goodbye!")
             break
-
 
         else:
             print("Invalid choice. Please try again.")
