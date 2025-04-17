@@ -13,7 +13,7 @@ class LanguageHandler:
             return lang
         except:
             return "en"
-#TODO: check from here to the bottom
+
     @staticmethod
     def set_language(lang_code: str):
         os.makedirs("data", exist_ok=True)
@@ -25,8 +25,8 @@ class LanguageHandler:
         if os.path.exists(CONFIG_PATH):
             with open(CONFIG_PATH, encoding="utf-8") as f:
                 config = json.load(f)
-                return config.get("language", "en")
-        return "en"
+                return config.get("language", "auto")
+        return "auto"
 
     @staticmethod
     def choose_or_detect(text: str = None) -> str:
