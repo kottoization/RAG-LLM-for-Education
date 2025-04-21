@@ -27,10 +27,15 @@ Include:
 
 DO NOT include examples or commentary.
 Only return the structured content.
+
+Respond in this language only: {language} ❤️
 """
         )
 
-    def generate_cheatsheet(self, input_text: str) -> str:
+    def generate_cheatsheet(self, input_text: str, language: str = "en") -> str:
         chain = self.prompt | self.llm
-        response = chain.invoke({"input": input_text})
+        response = chain.invoke({
+            "input": input_text,
+            "language": language
+        })
         return response.content
