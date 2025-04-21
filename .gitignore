@@ -1,7 +1,6 @@
 .env
 rag/
 venv/
-data/learning_plans/
 
 # Ignore Python cache and compiled files
 __pycache__/

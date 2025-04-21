@@ -25,6 +25,8 @@ Include:
 - Formulas should be clearly presented
 - Use markdown-style formatting (headers, bullet lists)
 
+Written content should be helpfull for someone who does not know the details and answer to given questions.
+Focus on making the cheat sheet high quality and easy to use when faces a dificult question that one is not familiar with.
 DO NOT include examples or commentary.
 Only return the structured content.
 

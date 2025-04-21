@@ -4,7 +4,6 @@ import re
 from datetime import datetime
 from langchain_openai import ChatOpenAI
 
-
 class Flashcard:
     """
     Represents a single flashcard with a question and an answer.
@@ -53,7 +52,7 @@ class FlashcardSet:
             except Exception as e:
                 print(f"⚠️ Error parsing block: {e}")
 
-    def generate_from_prompt(self, topic_prompt: str):
+    def generate_from_prompt(self, topic_prompt: str, language: str = "en"):  # ❤️ dodano parametr języka
         """
         Uses an LLM to generate flashcards based on a topic prompt.
         """
@@ -70,7 +69,8 @@ class FlashcardSet:
             f"Each flashcard must follow this format:\n"
             f"Q: [Clear, technical question]\n"
             f"A: [Precise, exam-focused answer]\n\n"
-            f"Don't include explanations, examples, or anything besides flashcards."
+            f"Don't include explanations, examples, or anything besides flashcards.\n"
+            f"Respond in {language}."  # ❤️ prompt uwzględniający język
         )
 
         try:
@@ -131,4 +131,3 @@ class FlashcardSet:
         Returns list of flashcards as list of dicts (e.g. for JSON API).
         """
         return [fc.to_dict() for fc in self.flashcards]
-    
