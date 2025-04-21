@@ -80,20 +80,22 @@ class LearningPlan:
     def recommend_materials(self, topic):
         """
         Retrieve recommended materials for a given topic using LLM.
+        The response should prioritize materials in the user's language,
+        but can include English resources as fallback.
         """
         prompt = (
-            f"You are an AI assistant tasked with recommending study materials. "
-            f"Provide a concise but short list of materials to help someone learn about '{topic}'. "
-            f"Respond in {self.user_language} language."
+            f"You are an AI assistant tasked with recommending study materials.\n"
+            f"Provide a concise, high-quality list of recommended books, articles, or resources to help someone learn about '{topic}'.\n"
+            f"Respond only in {self.user_language}. If resources in this language are limited, you may include a few English ones."
         )
         try:
-            # Invoke ChatOpenAI directly with a string prompt
             response = self.llm.invoke(prompt)
-            materials = response.content.split("\n")  # Assuming each material is in a new line
+            materials = response.content.split("\n")  # Each material expected on a new line
             return materials
         except Exception as e:
             print(f"Error while generating materials for topic '{topic}': {e}")
             return ["No materials available"]
+
 
     def generate_plan_from_prompt(self, user_input):
         """
