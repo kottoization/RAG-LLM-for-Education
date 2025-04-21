@@ -6,10 +6,11 @@ from langchain_openai import ChatOpenAI
 # TODO: use cases from prompts for edu
 
 class LearningPlan:
-    def __init__(self, user_name, quiz_results=None, user_goals=None):
+    def __init__(self, user_name, quiz_results=None, user_goals=None, user_language="en"):
         self.user_name = user_name
         self.quiz_results = quiz_results if quiz_results else {}
         self.user_goals = user_goals if user_goals else {}
+        self.user_language = user_language
         self.learning_plan = []
         self.llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, verbose=True)  # Użycie ChatOpenAI
 
@@ -82,7 +83,8 @@ class LearningPlan:
         """
         prompt = (
             f"You are an AI assistant tasked with recommending study materials. "
-            f"Provide a concise but short list of materials to help someone learn about '{topic}'."
+            f"Provide a concise but short list of materials to help someone learn about '{topic}'. "
+            f"Respond in {self.user_language} language."
         )
         try:
             # Invoke ChatOpenAI directly with a string prompt

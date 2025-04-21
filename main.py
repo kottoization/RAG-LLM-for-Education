@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from QuizModule.quiz_operations import generate_quiz, generate_learning_plan_from_quiz
-from LearningPlanModule.learning_plan import LearningPlan
+from LearningPlanModule import LearningPlan
 from SummaryModule.summary_generator import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
@@ -89,7 +89,7 @@ def main_menu():
                 user_name = input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
             elif sub_choice == "2":
-                user_name = input("Enter your name: ")
+                user_name = input("Enter your name: ") # TODO: consider deleting
                 goals_input = input("Enter your learning goals (comma-separated): ")
                 language = LanguageHandler.choose_or_detect(goals_input)
                 user_input = {
@@ -132,7 +132,7 @@ def main_menu():
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
 
-        elif choice == "8":
+        elif choice == "8" or choice =="q" or choice =="quit":
             print("Goodbye!")
             break
 
