@@ -52,7 +52,7 @@ class FlashcardSet:
             except Exception as e:
                 print(f"⚠️ Error parsing block: {e}")
 
-    def generate_from_prompt(self, topic_prompt: str, language: str = "en"):  # ❤️ dodano parametr języka
+    def generate_from_prompt(self, topic_prompt: str, language: str = "en"):
         """
         Uses an LLM to generate flashcards based on a topic prompt.
         """
@@ -70,7 +70,7 @@ class FlashcardSet:
             f"Q: [Clear, technical question]\n"
             f"A: [Precise, exam-focused answer]\n\n"
             f"Don't include explanations, examples, or anything besides flashcards.\n"
-            f"Respond in {language}."  # ❤️ prompt uwzględniający język
+            f"Respond in {language}."
         )
 
         try:

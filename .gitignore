@@ -1,5 +1,4 @@
 .env
-rag/
 venv/
 
 # Ignore Python cache and compiled files

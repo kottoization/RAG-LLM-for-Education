@@ -1,5 +1,5 @@
 import pandas as pd
-from tools.embeddings import get_embedding, reduce_df
+from tools.experimental.RAG.embeddings import get_embedding, reduce_df
 import os
 # TODO: probably delete or move to some RAG related module
 embedded_articles_path = os.path.join("data", "embedded_data.csv")
