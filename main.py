@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from QuizModule.quiz_operations import generate_quiz, generate_learning_plan_from_quiz
+from QuizModule import generate_quiz, generate_learning_plan_from_quiz
 from LearningPlanModule import LearningPlan
 from SummaryModule.summary_generator import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet

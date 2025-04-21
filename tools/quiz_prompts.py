@@ -1,52 +1,68 @@
 from langchain_core.prompts import ChatPromptTemplate
 
-def generate_topic_list_prompt(subject: str) -> ChatPromptTemplate:
+def generate_topic_list_prompt(subject: str, language: str = "en") -> ChatPromptTemplate:
     """
-    Generates a prompt template to create a list of quiz topics.
+    Generates a prompt template to create a list of quiz topics in the specified language.
     """
-    messages = [
-        ("system", """
-        You are an AI language model assistant with expertise in educational content creation.
-        Your task is to generate a concise list of core topics for a quiz based on a given subject.
-        Ensure the list includes essential concepts and is structured logically.
-        """),
-        ("human", f"Based on the following subject, generate a list of topics for a quiz:\nSubject: {subject}")
-    ]
-    return ChatPromptTemplate.from_messages(messages)
+    system_message = (
+        f"You are an expert in educational curriculum design.\n"
+        f"Your task is to generate a logically structured list of the most examinable subtopics.\n"
+        f"Respond exclusively in {language}. Do not include explanations."
+    )
 
-def generate_questions_prompt(topic: str) -> ChatPromptTemplate:
-    """
-    Generates a prompt template to create multiple-choice quiz questions.
-    """
-    messages = [
-        ("system", """
-        You are an AI language model assistant with expertise in educational content creation.
-        Your task is to generate a set of multiple-choice questions for a quiz based on a given topic.
-        Assign difficulty levels: 1 for easy, 2 for medium, and 3 for advanced.
-        Ensure the quiz can be completed in 5-10 minutes.
-        Provide the output in the following format:
-        1. Question: [Your question here]
-        Difficulty: [1, 2, or 3]
-        a) [Option A]
-        b) [Option B]
-        c) [Option C]
-        d) [Option D]
-        Correct Answer: [a, b, c, or d]
-        """),
-        ("human", f"Generate a set of multiple-choice questions for the following topic:\nTopic: {topic}")
-    ]
-    return ChatPromptTemplate.from_messages(messages)
+    human_message = (
+        f"Subject: {subject}\n\n"
+        f"Create a bullet list of core topics that could be used to create a quiz."
+    )
 
-def assess_knowledge_level_prompt(topic: str, score_percentage: float) -> ChatPromptTemplate:
+    return ChatPromptTemplate.from_messages([
+        ("system", system_message),
+        ("human", human_message)
+    ])
+
+def generate_questions_prompt(topic: str, language: str = "en") -> ChatPromptTemplate:
     """
-    Generates a prompt template to assess user's knowledge level based on quiz performance for a specific topic.
+    Generates a prompt template to create multiple-choice quiz questions in the specified language.
     """
-    messages = [
-        ("system", """
-        You are an AI language model assistant with expertise in educational assessment.
-        Your task is to evaluate a user's knowledge level based on their quiz score percentage for a specific topic.
-        Provide a concise assessment and suggest the next steps for their learning journey.
-        """),
-        ("human", f"Assess the user's knowledge level for the following topic:\nTopic: {topic}\nScore Percentage: {score_percentage}")
-    ]
-    return ChatPromptTemplate.from_messages(messages)
+    system_message = (
+        f"You are a professional educator preparing multiple-choice quiz questions for a technical topic.\n"
+        f"Write all content STRICTLY in {language}.\n"
+        "For each question:\n"
+        "- Provide EXACTLY 4 answer options labeled a), b), c), d)\n"
+        "- End with the line: Correct Answer: [a/b/c/d] (must be one of these options)\n"
+        "- Questions must be domain-relevant, clear, and varied in difficulty\n"
+        "- Do NOT explain answers. Only output questions in the specified format.\n"
+        "IMPORTANT: Do not skip the 'Correct Answer' line. Every question must have it."
+    )
+
+    human_message = (
+        f"Topic: {topic}\n\n"
+        f"Generate a high-quality set of multiple-choice questions in {language}."
+    )
+
+    return ChatPromptTemplate.from_messages([
+        ("system", system_message),
+        ("human", human_message)
+    ])
+
+
+def assess_knowledge_level_prompt(topic: str, score_percentage: float, language: str = "en") -> ChatPromptTemplate:
+    """
+    Generates a prompt to assess user's knowledge level based on their quiz performance for a specific topic.
+    """
+    system_message = (
+        "You are an expert tutor assessing a student's knowledge level based on their quiz result. "
+        "Provide a short but insightful summary and suggest concrete next steps for learning. "
+        f"Respond in {language}."
+    )
+
+    human_message = (
+        f"Topic: {topic}\n"
+        f"Score Percentage: {score_percentage}\n\n"
+        f"Assess the knowledge level and suggest next steps for improvement."
+    )
+
+    return ChatPromptTemplate.from_messages([
+        ("system", system_message),
+        ("human", human_message)
+    ])
