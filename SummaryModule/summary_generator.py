@@ -1,5 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
+from tools.language_handler import LanguageHandler
 
 # TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect. 
 
@@ -11,7 +12,7 @@ class StudySummaryGenerator:
     def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
 
-        self.prompt = PromptTemplate.from_template(
+        self.base_prompt = PromptTemplate.from_template(
             """
 You are an expert university lecturer helping a student prepare for a difficult exam.
 
@@ -41,10 +42,16 @@ IMPORTANT:
 - Avoid conversational tone – this should be structured content
 
 Only output the content. No introductions or commentary.
-"""
-        )
 
-    def generate_summary(self, input_text: str) -> str:
-        chain = self.prompt | self.llm
-        response = chain.invoke({"input": input_text})
+Respond in {language}.
+"""
+        ) 
+
+    def generate_summary(self, input_text: str, language: str = "en") -> str:
+        """
+        Generate a detailed study summary using the configured LLM and prompt.
+        """
+        lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language  # ❤️ automatyczne wykrycie
+        chain = self.base_prompt | self.llm
+        response = chain.invoke({"input": input_text, "language": lang})  # ❤️ przekazanie języka
         return response.content

@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from QuizModule import generate_quiz, generate_learning_plan_from_quiz
 from LearningPlanModule import LearningPlan
-from SummaryModule.summary_generator import StudySummaryGenerator
+from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
