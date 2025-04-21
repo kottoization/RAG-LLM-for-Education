@@ -3,7 +3,7 @@ from QuizModule.quiz_operations import generate_quiz, generate_learning_plan_fro
 from LearningPlanModule.learning_plan import LearningPlan
 from SummaryModule.summary_generator import StudySummaryGenerator
 from FlashcardsModule.flashcards import FlashcardSet
-from CheatSheetModule.cheatsheet_generator import CheatSheetGenerator
+from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
 from langchain_openai import ChatOpenAI
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
