@@ -17,21 +17,24 @@ class RAGService:
         self.persist_directory = persist_directory
         os.makedirs(self.persist_directory, exist_ok=True)
 
+        # embeddings client
         self.embeddings = OpenAIEmbeddings(
             model=embedding_model_name,
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
 
+        # load or create vector store
         if os.listdir(self.persist_directory):
             self.docsearch = FAISS.load_local(
                 self.persist_directory,
                 embeddings=self.embeddings
             )
         else:
+            # get docs from data/RAG_files
             loader = DirectoryLoader(
-                "data",
+                "data/RAG_files",
                 glob="**/*.*"
-            )  # <3
+            )
             docs = loader.load()
 
             splitter = RecursiveCharacterTextSplitter(
@@ -40,16 +43,17 @@ class RAGService:
             )
             split_docs = splitter.split_documents(docs)
 
+            # FAISS creation and save to the dir
             self.docsearch = FAISS.from_documents(
                 split_docs,
                 embedding=self.embeddings
             )
-            self.docsearch.save_local(self.persist_directory)  # <3
+            self.docsearch.save_local(self.persist_directory)
 
     def get_retriever(self, k: int = 5):
         """
-        Zwraca retriever do użycia w chainach.
+        Returns a retriever to be used in pipelines/chains.
         """
         return self.docsearch.as_retriever(
             search_kwargs={"k": k}
-        )  # <3
+        )
