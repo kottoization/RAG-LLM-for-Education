@@ -3,6 +3,7 @@ import os
 import re
 from datetime import datetime
 from langchain_openai import ChatOpenAI
+from langchain.chains import RetrievalQA
 
 class Flashcard:
     """
@@ -27,9 +28,10 @@ class FlashcardSet:
     """
     Manages a set of flashcards: generation, review, and saving.
     """
-    def __init__(self, topic: str, flashcards=None):
+    def __init__(self, topic: str, flashcards=None, retriever=None):
         self.topic = topic.strip()
         self.flashcards = flashcards if flashcards else []
+        self.retriever = retriever  # optional RAG retriever
 
     def add_flashcard(self, flashcard: Flashcard):
         self.flashcards.append(flashcard)
@@ -54,7 +56,7 @@ class FlashcardSet:
 
     def generate_from_prompt(self, topic_prompt: str, language: str = "en"):
         """
-        Uses an LLM to generate flashcards based on a topic prompt.
+        Uses an LLM (optionally RAG) to generate flashcards based on a topic prompt.
         """
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
 
@@ -74,8 +76,18 @@ class FlashcardSet:
         )
 
         try:
-            response = llm.invoke(prompt)
-            raw_output = response.content
+            # if retriever provided, use RAG for richer context
+            if self.retriever:
+                qa = RetrievalQA.from_chain_type(
+                    llm=llm,
+                    chain_type="stuff",
+                    retriever=self.retriever
+                )
+                raw_output = qa.run(topic_prompt)
+            else:
+                response = llm.invoke(prompt)
+                raw_output = response.content
+
             pairs = re.findall(r"Q:\s*(.+?)\nA:\s*(.+?)(?=\nQ:|\Z)", raw_output, re.DOTALL)
 
             for q, a in pairs:

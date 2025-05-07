@@ -7,8 +7,10 @@ from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
 from langchain_openai import ChatOpenAI
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
+from RAGModule import RAGService
 import os
 
+# Load environment variables from .env
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
@@ -43,11 +45,18 @@ def chat_with_bot():
     except Exception as e:
         print(f"An error occurred while chatting with the bot: {e}")
 
-
 def main_menu():
     """
     Main menu for the application.
     """
+    # Initialize RAGService and retriever (optional)
+    try:
+        rag_service = RAGService()
+        retriever = rag_service.get_retriever(k=5)
+    except Exception as e:
+        print(f"[RAG Init Error] {e}")
+        retriever = None
+
     while True:
         print("\nSelect an option:")
         print("0. Set preferred language")
@@ -60,7 +69,7 @@ def main_menu():
         print("7. Generate Cheat Sheet")
         print("8. Exit")
 
-        choice = input("Enter the number of your choice: ")
+        choice = input("Enter the number of your choice: ").strip()
 
         if choice == "0":
             print("Enter your preferred language code (e.g. en, pl, de, fr) or 'auto' to detect automatically each time:")
@@ -74,27 +83,26 @@ def main_menu():
         elif choice == "2":
             subject = input("Enter the subject for the quiz: ")
             language = LanguageHandler.choose_or_detect(subject)
-            generate_quiz(subject, language=language)
+            # pass retriever to quiz (RAG-enabled if available)
+            generate_quiz(subject, language=language, retriever=retriever)
 
         elif choice == "3":
             print("\nSelect an option:")
             print("1. Take a quiz to generate a learning plan")
             print("2. Input custom learning goals")
-            sub_choice = input("Enter your choice: ")
+            sub_choice = input("Enter your choice: ").strip()
 
             if sub_choice == "1":
                 subject = input("Enter the subject for the quiz: ")
                 language = LanguageHandler.choose_or_detect(subject)
-                quiz_results = generate_quiz(subject, language=language)
+                quiz_results = generate_quiz(subject, language=language, retriever=retriever)
                 user_name = input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
             elif sub_choice == "2":
-                user_name = input("Enter your name: ") # TODO: consider deleting
+                user_name = input("Enter your name: ")  # TODO: consider deleting
                 goals_input = input("Enter your learning goals (comma-separated): ")
                 language = LanguageHandler.choose_or_detect(goals_input)
-                user_input = {
-                    "goals": [goal.strip() for goal in goals_input.split(",")]
-                }
+                user_input = {"goals": [goal.strip() for goal in goals_input.split(",")]}
                 plan = LearningPlan(user_name=user_name, user_language=language)
                 plan.generate_plan_from_prompt(user_input)
                 plan.display_plan()
@@ -105,8 +113,9 @@ def main_menu():
         elif choice == "4":
             topic = input("Enter a topic for flashcard generation: ")
             language = LanguageHandler.choose_or_detect(topic)
-            flashcards = FlashcardSet(topic)
-            flashcards.generate_from_prompt(topic_prompt=topic, language=language)
+            # pass retriever to flashcards
+            flashcards = FlashcardSet(topic, retriever=retriever)
+            flashcards.generate_from_prompt(topic, language=language)
             print(flashcards.to_dict_list())
             flashcards.save_to_file()
 
@@ -119,7 +128,8 @@ def main_menu():
         elif choice == "6":
             topic = input("Enter the topic or material for TL;DR summary: ")
             language = LanguageHandler.choose_or_detect(topic)
-            summarizer = StudySummaryGenerator()
+            # pass retriever to summary
+            summarizer = StudySummaryGenerator(retriever=retriever)
             summary = summarizer.generate_summary(topic, language=language)
             print("\n📘 Summary:\n")
             print(summary)
@@ -127,12 +137,13 @@ def main_menu():
         elif choice == "7":
             topic = input("Enter the topic or material for the cheat sheet: ")
             language = LanguageHandler.choose_or_detect(topic)
-            generator = CheatSheetGenerator()
+            # pass retriever to cheat sheet generator
+            generator = CheatSheetGenerator(retriever=retriever)
             cheatsheet = generator.generate_cheatsheet(topic, language=language)
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
 
-        elif choice == "8" or choice =="q" or choice =="quit":
+        elif choice in ("8", "q", "quit"):
             print("Goodbye!")
             break
 

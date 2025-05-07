@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from tools.language_handler import LanguageHandler
+from langchain.chains import RetrievalQA
 
 # TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect. 
 
@@ -9,8 +10,9 @@ class StudySummaryGenerator:
     Generates a detailed study guide based on a topic – intended for learning, not just review.
     Ideal for exam preparation.
     """
-    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5):
+    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5,retriever=None):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
+        self.retriever = retriever
 
         self.base_prompt = PromptTemplate.from_template(
             """
@@ -51,7 +53,17 @@ Respond in {language}.
         """
         Generate a detailed study summary using the configured LLM and prompt.
         """
-        lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language  # ❤️ automatyczne wykrycie
+        lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language
+
+        if self.retriever:
+            # Retrieval-augmented generation
+            qa = RetrievalQA.from_chain_type(
+                llm=self.llm,
+                chain_type="stuff",
+                retriever=self.retriever
+            )
+            return qa.run(input_text)
+
         chain = self.base_prompt | self.llm
-        response = chain.invoke({"input": input_text, "language": lang})  # ❤️ przekazanie języka
+        response = chain.invoke({"input": input_text, "language": lang})
         return response.content

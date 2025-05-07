@@ -1,5 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
+from langchain.chains import RetrievalQA
 
 # TODO: test and optimize
 
@@ -8,8 +9,9 @@ class CheatSheetGenerator:
     Generates concise exam-style cheat sheets with only the most critical facts, formulas, and definitions.
     Ideal for rapid last-minute review. Use the Pareto principle.
     """
-    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.3):
+    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.3,retriever=None):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
+        self.retriever = retriever
 
         self.prompt = PromptTemplate.from_template(
             """
@@ -30,14 +32,25 @@ Focus on making the cheat sheet high quality and easy to use when faces a dificu
 DO NOT include examples or commentary.
 Only return the structured content.
 
-Respond in this language only: {language} ❤️
+Respond in this language only: {language}
 """
         )
 
     def generate_cheatsheet(self, input_text: str, language: str = "en") -> str:
+        """
+        Generate a cheat sheet; uses RAG if retriever is provided.
+        """
+        lang = language
+
+        if self.retriever:
+            qa = RetrievalQA.from_chain_type(
+                llm=self.llm,
+                chain_type="stuff",
+                retriever=self.retriever
+            )
+            return qa.run(input_text)
+
+        # Fallback to simple LLM cheat sheet
         chain = self.prompt | self.llm
-        response = chain.invoke({
-            "input": input_text,
-            "language": language
-        })
+        response = chain.invoke({"input": input_text, "language": lang})
         return response.content
