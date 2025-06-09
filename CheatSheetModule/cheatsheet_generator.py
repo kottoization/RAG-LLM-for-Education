@@ -30,7 +30,7 @@ Focus on making the cheat sheet high quality and easy to use when faces a dificu
 DO NOT include examples or commentary.
 Only return the structured content.
 
-Respond in this language only: {language} ❤️
+Respond in this language only: {language} 
 """
         )
 
