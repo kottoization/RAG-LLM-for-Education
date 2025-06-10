@@ -84,7 +84,8 @@ def main_menu():
             subject = input("Enter the subject for the quiz: ")
             language = LanguageHandler.choose_or_detect(subject)
             # pass retriever to quiz (RAG-enabled if available)
-            generate_quiz(subject, language=language, retriever=retriever)
+            use_rag = input("Use RAG to generate quiz topics? (y/N): ").strip().lower()=="y"
+            generate_quiz(subject, language=language, use_rag=use_rag)
 
         elif choice == "3":
             print("\nSelect an option:")
@@ -115,7 +116,8 @@ def main_menu():
             language = LanguageHandler.choose_or_detect(topic)
             # pass retriever to flashcards
             flashcards = FlashcardSet(topic, retriever=retriever)
-            flashcards.generate_from_prompt(topic, language=language)
+            use_rag = input("Enrich flashcards with your documents? (y/N): ").strip().lower()=="y"
+            flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag)
             print(flashcards.to_dict_list())
             flashcards.save_to_file()
 
@@ -130,7 +132,8 @@ def main_menu():
             language = LanguageHandler.choose_or_detect(topic)
             # pass retriever to summary
             summarizer = StudySummaryGenerator(retriever=retriever)
-            summary = summarizer.generate_summary(topic, language=language)
+            use_rag = input("Enrich summary with your documents? (y/N): ").strip().lower()=="y"
+            summary = summarizer.generate_summary(topic, language=language, use_rag=use_rag)
             print("\n📘 Summary:\n")
             print(summary)
 
@@ -139,7 +142,8 @@ def main_menu():
             language = LanguageHandler.choose_or_detect(topic)
             # pass retriever to cheat sheet generator
             generator = CheatSheetGenerator(retriever=retriever)
-            cheatsheet = generator.generate_cheatsheet(topic, language=language)
+            use_rag = input("Enrich cheat sheet with your documents? (y/N): ").strip().lower()=="y"
+            cheatsheet = generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
 

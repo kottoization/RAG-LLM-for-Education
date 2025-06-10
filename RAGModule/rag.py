@@ -113,7 +113,7 @@ class RAGHandler:
             )
         return self.vectordb
 
-    def semantic_search(self, query: str, k: int = 5) -> List[Document]:
+    def semantic_search(self, query: str, k: int = 3) -> List[Document]:
         """
         Return top-k document chunks relevant to the query.
         """
@@ -121,14 +121,14 @@ class RAGHandler:
         retriever = db.as_retriever(search_kwargs={"k": k})  # 🔍
         return retriever.get_relevant_documents(query)
 
-    def get_context(self, query: str, k: int = 5) -> str:
+    def get_context(self, query: str, k: int = 3) -> str:
         """
         Retrieve top-k relevant chunks and concatenate their content.
         """
         docs = self.semantic_search(query, k=k)
         return "\n\n".join([doc.page_content for doc in docs])  # 📚
 
-    def answer(self, query: str, k: int = 5) -> str:
+    def answer(self, query: str, k: int = 3) -> str:
         """
         Perform a simple RetrievalQA: retrieve k docs and answer with LLM.
         """

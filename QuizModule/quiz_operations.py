@@ -8,20 +8,22 @@ from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableLambda
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.language_handler import LanguageHandler
+from RAGModule.rag import RAGHandler    # 🆕
 
-def generate_quiz(subject: str, language: str = "en", retriever=None):
+def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
     """
     Generates a quiz based on the provided subject using parallel chains.
-    If retriever is provided, fetches relevant documents for context.
+    If use_rag is True, fetches relevant documents for context via RAG.
     """
     try:
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
         # Optional RAG context fetch
         context = ""
-        if retriever:
-            docs = retriever.get_relevant_documents(subject)
-            # concatenate top-k documents
+        if use_rag:
+            rag = RAGHandler()
+            rag.load_vectorstore()
+            docs = rag.semantic_search(subject, k=3)
             context = "\n\n".join([doc.page_content for doc in docs])
             print(f"[RAG] Retrieved {len(docs)} documents for context.")
 
@@ -34,7 +36,9 @@ def generate_quiz(subject: str, language: str = "en", retriever=None):
         print(f"Generating topics for subject: {subject}")
         topic_prompt = generate_topic_list_prompt(prompt_subject, language)
         try:
-            topic_result = llm.invoke(topic_prompt.format_prompt(subject=prompt_subject))
+            topic_result = llm.invoke(
+                topic_prompt.format_prompt(subject=prompt_subject)
+            )
             topics = topic_result.content.split("\n")
             print(f"Generated topics: {topics}")
         except Exception as e:
@@ -48,13 +52,24 @@ def generate_quiz(subject: str, language: str = "en", retriever=None):
 
         # Generate questions in parallel
         print("Generating questions for all topics...")
-        try:
+        if use_rag:
+            rag = RAGHandler()
+            rag.load_vectorstore()
             question_chain = RunnableLambda(
-                lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
+                lambda inputs: (
+                    rag.get_context(inputs["topic"], k=3)
+                    + "\n\n"
+                    + generate_questions_prompt(inputs["topic"], language=language)
+                        .format_prompt(topic=inputs["topic"])
+                )
             ) | llm
-            questions = question_chain.batch([{"topic": topic} for topic in topics])
-        except Exception as e:
-            raise ValueError(f"Error generating questions: {e}")
+        else:
+            question_chain = RunnableLambda(
+                lambda inputs: generate_questions_prompt(inputs["topic"], language=language)
+                    .format_prompt(topic=inputs["topic"])
+            ) | llm
+
+        questions = question_chain.batch([{"topic": topic} for topic in topics])
 
         # Quiz CLI
         print("\nStarting the quiz...\n")
@@ -93,7 +108,7 @@ def generate_quiz(subject: str, language: str = "en", retriever=None):
         print("\nFinal Results:")
         overall_percentage = 0
         for topic, (correct, total) in user_scores.items():
-            percentage = (correct/total)*100 if total>0 else 0
+            percentage = (correct/total)*100 if total > 0 else 0
             overall_percentage += percentage
             print(f"Topic: {topic} - Score: {correct}/{total} ({percentage:.2f}%)")
         overall_percentage /= len(user_scores) if user_scores else 1

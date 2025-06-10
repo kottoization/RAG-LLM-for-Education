@@ -2,6 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from tools.language_handler import LanguageHandler
 from langchain.chains import RetrievalQA
+from RAGModule.rag import RAGHandler 
 
 # TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect. 
 
@@ -49,20 +50,31 @@ Respond in {language}.
 """
         ) 
 
-    def generate_summary(self, input_text: str, language: str = "en") -> str:
+    def generate_summary(
+        self,
+        input_text: str,
+        language: str = "en",
+        use_rag: bool = False
+    ) -> str:
         """
         Generate a detailed study summary using the configured LLM and prompt.
         """
         lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language
 
-        if self.retriever:
-            # Retrieval-augmented generation
-            qa = RetrievalQA.from_chain_type(
-                llm=self.llm,
-                chain_type="stuff",
-                retriever=self.retriever
-            )
-            return qa.run(input_text)
+        # if self.retriever:
+        #     # Retrieval-augmented generation
+        #     qa = RetrievalQA.from_chain_type(
+        #         llm=self.llm,
+        #         chain_type="stuff",
+        #         retriever=self.retriever
+        #     )
+        #     return qa.run(input_text)
+
+        if use_rag:
+            rag = RAGHandler()
+            rag.load_vectorstore()
+            docs_context = rag.get_context(input_text, k=3)
+            input_text = f"{docs_context}\n\n### Topic:\n{input_text}"
 
         chain = self.base_prompt | self.llm
         response = chain.invoke({"input": input_text, "language": lang})

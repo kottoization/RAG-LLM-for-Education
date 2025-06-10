@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
+from RAGModule.rag import RAGHandler 
 
 class Flashcard:
     """
@@ -54,12 +55,22 @@ class FlashcardSet:
             except Exception as e:
                 print(f"⚠️ Error parsing block: {e}")
 
-    def generate_from_prompt(self, topic_prompt: str, language: str = "en"):
+    def generate_from_prompt(self, topic_prompt: str, language: str = "en", use_rag: bool = False):
         """
         Uses an LLM (optionally RAG) to generate flashcards based on a topic prompt.
         """
+        context = ""
+        if use_rag:
+            rag = RAGHandler()
+            rag.load_vectorstore()
+            context = rag.get_context(topic_prompt, k=3)
+
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
 
+        prompt = ""
+        if context:
+            prompt += context + "\n\n"
+            
         prompt = (
             f"You are an expert educator preparing students for a rigorous test or exam.\n"
             f"Generate a high-quality, detailed list of flashcards for the topic: \"{topic_prompt}\".\n"
