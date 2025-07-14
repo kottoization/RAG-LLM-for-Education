@@ -22,7 +22,8 @@ class RAGHandler:
         self,
         rag_files_path: str = "data/RAG_files",
         persist_directory: str = "data/chroma_db",
-        embedding_model: str = "text-embedding-3-large",
+        #embedding_model: str = "text-embedding-3-large", TODO: use latest embedding model if needed, for now using the cheaper one
+        embedding_model: str = "text-embedding-ada-002",
         llm_model: str = "gpt-3.5-turbo",
         chunk_size: int = 1000,
         chunk_overlap: int = 100
