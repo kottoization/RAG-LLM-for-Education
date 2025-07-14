@@ -45,7 +45,7 @@ Only output the content. No introductions or commentary.
         """
         Generates a structured, educational summary for the input text in the specified language.
         """
-        prompt_text = self.base_template.format(input=input_text, language=language)  # ❤️
+        prompt_text = self.base_template.format(input=input_text, language=language)
         prompt = PromptTemplate.from_template(prompt_text)
         chain = prompt | self.llm
         response = chain.invoke({"input": input_text})

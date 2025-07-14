@@ -8,7 +8,7 @@ from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableLambda
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.language_handler import LanguageHandler
-from RAGModule.rag import RAGHandler    # 🆕
+from RAGModule.rag import RAGHandler
 
 def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
     """
