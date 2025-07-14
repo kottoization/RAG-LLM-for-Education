@@ -9,7 +9,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI
-
+# TODO: keep embeddings in singleton to avoid reinitialization, check if the changes are needed here or in rag_service.py
 class RAGHandler:
     """
     Core RAG functionality:
