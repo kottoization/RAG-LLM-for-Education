@@ -3,7 +3,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-# TODO: keep embeddings in singleton to avoid reinitialization, check if the changes are needed here or in rag.py
+
 class RAGService:
     """
     Service to ingest documents from folder, embed, index into FAISS,

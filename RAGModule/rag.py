@@ -9,7 +9,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI
-# TODO: keep embeddings in singleton to avoid reinitialization, check if the changes are needed here or in rag_service.py
+
 class RAGHandler:
     """
     Core RAG functionality:
@@ -32,20 +32,34 @@ class RAGHandler:
         self.rag_path = Path(rag_files_path)
         self.persist_dir = persist_directory
 
+        self.embedding_model = embedding_model
+        self.llm_model = llm_model
+
         # ✂️ Text splitter for chunking documents
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
 
-        # 📈 Embedding model
-        self.embeddings = OpenAIEmbeddings(model=embedding_model)
+        # 📈 Embedding model with lazy init
+        #self.embeddings = OpenAIEmbeddings(model=embedding_model)
+        self.embeddings: Optional[OpenAIEmbeddings] = None
+        
 
         # 🤖 LLM for QA
-        self.llm = ChatOpenAI(model=llm_model, temperature=0.2)
+        # self.llm = ChatOpenAI(model=llm_model, temperature=0.2)
+        self.llm: Optional[ChatOpenAI] = None
 
         # 🔄 Placeholder for the vectorstore
         self.vectordb: Optional[Chroma] = None
+
+    def _init_embeddings(self):
+        if self.embeddings is None:
+            self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
+
+    def _init_llm(self):
+        if self.llm is None:
+            self.llm = ChatOpenAI(model=self.llm_model, temperature=0.2)
 
     def ingest(self) -> List[Document]:
         """
@@ -85,6 +99,7 @@ class RAGHandler:
         """
         Build (or rebuild) the Chroma vectorstore from provided docs (or ingest folder).
         """
+        self._init_embeddings()
         if docs is None:
             docs = self.ingest()
         chunks = self.split(docs)
@@ -107,6 +122,7 @@ class RAGHandler:
         """
         Load an existing Chroma vectorstore from persist_directory.
         """
+        self._init_embeddings()
         if self.vectordb is None:
             self.vectordb = Chroma(
                 embedding_function=self.embeddings,
@@ -133,6 +149,7 @@ class RAGHandler:
         """
         Perform a simple RetrievalQA: retrieve k docs and answer with LLM.
         """
+        self._init_llm()
         db = self.load_vectorstore()
         qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm,
@@ -150,6 +167,7 @@ class RAGHandler:
         """
         ConversationalRetrievalChain: maintain context + retrieve.
         """
+        self._init_llm()
         db = self.load_vectorstore()
         conv_chain = ConversationalRetrievalChain.from_llm(
             llm=self.llm,
