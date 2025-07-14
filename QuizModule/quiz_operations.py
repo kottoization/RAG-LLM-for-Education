@@ -119,3 +119,12 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
     except Exception as e:
         print(f"An error occurred while generating the quiz: {e}")
         return {}
+
+def generate_learning_plan_from_quiz(user_name, quiz_results, language="en"):
+    """
+    Generates a learning plan based on quiz results.
+    """
+    plan = LearningPlan(user_name=user_name, quiz_results=quiz_results, user_language=language)
+    learning_plan = plan.generate_plan()
+    plan.display_plan()
+    return learning_plan
