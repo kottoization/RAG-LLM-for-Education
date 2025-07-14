@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from langchain.document_loaders import TextLoader, PyPDFLoader
+from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI
