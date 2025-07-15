@@ -3,8 +3,9 @@ import os
 import re
 from datetime import datetime
 from langchain_openai import ChatOpenAI
+from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
 from langchain.chains import RetrievalQA
-from RAGModule.rag import RAGHandler 
+from RAGModule.rag import RAGHandler
 
 class Flashcard:
     """
@@ -57,34 +58,49 @@ class FlashcardSet:
 
     def generate_from_prompt(self, topic_prompt: str, language: str = "en", use_rag: bool = False):
         """
-        Uses an LLM (optionally RAG) to generate flashcards based on a topic prompt.
+        Uses an LLM (optionally with RAG) to generate flashcards based on a topic prompt.
+        When ``use_rag`` is True, additional context from your indexed documents is
+        fetched and prepended to the prompt.
         """
-        context = ""
-        if use_rag:
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            context = rag.get_context(topic_prompt, k=3)
-
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
 
-        prompt = ""
-        if context:
-            prompt += context + "\n\n"
-            
-        prompt = (
-            f"You are an expert educator preparing students for a rigorous test or exam.\n"
-            f"Generate a high-quality, detailed list of flashcards for the topic: \"{topic_prompt}\".\n"
-            f"The flashcards should include:\n"
-            f"- definitions of core concepts\n"
-            f"- names and explanations of key theorems or formulas\n"
-            f"- concrete, technical facts that are often tested\n"
-            f"- pay attention to the detailed domain knowledge needed by specialists at the level indicated by the user\n"
-            f"Each flashcard must follow this format:\n"
-            f"Q: [Clear, technical question]\n"
-            f"A: [Precise, exam-focused answer]\n\n"
-            f"Don't include explanations, examples, or anything besides flashcards.\n"
-            f"Respond in {language}."
+        def _fetch_context(inputs):
+            rag = RAGHandler()
+            rag.load_vectorstore()
+            ctx = rag.get_context(inputs["topic_prompt"], k=3)
+            return {**inputs, "context": ctx}
+
+        def _skip_context(inputs):
+            return {**inputs, "context": ""}
+
+        branch = RunnableBranch(
+            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
+            RunnableLambda(_skip_context)
         )
+
+        def _build_prompt(inputs):
+            context = inputs["context"]
+            topic = inputs["topic_prompt"]
+            prompt = ""
+            if context:
+                prompt += context + "\n\n"
+            prompt += (
+                f"You are an expert educator preparing students for a rigorous test or exam.\n"
+                f"Generate a high-quality, detailed list of flashcards for the topic: \"{topic}\".\n"
+                f"The flashcards should include:\n"
+                f"- definitions of core concepts\n"
+                f"- names and explanations of key theorems or formulas\n"
+                f"- concrete, technical facts that are often tested\n"
+                f"- pay attention to the detailed domain knowledge needed by specialists at the level indicated by the user\n"
+                f"Each flashcard must follow this format:\n"
+                f"Q: [Clear, technical question]\n"
+                f"A: [Precise, exam-focused answer]\n\n"
+                f"Don't include explanations, examples, or anything besides flashcards.\n"
+                f"Respond in {inputs['language']}."
+            )
+            return prompt
+
+        chain = RunnableSequence(branch, RunnableLambda(_build_prompt) | llm)
 
         try:
             # if retriever provided, use RAG for richer context
@@ -96,7 +112,7 @@ class FlashcardSet:
                 )
                 raw_output = qa.run(topic_prompt)
             else:
-                response = llm.invoke(prompt)
+                response = chain.invoke({"topic_prompt": topic_prompt, "language": language, "use_rag": use_rag})
                 raw_output = response.content
 
             pairs = re.findall(r"Q:\s*(.+?)\nA:\s*(.+?)(?=\nQ:|\Z)", raw_output, re.DOTALL)

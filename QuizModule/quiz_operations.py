@@ -5,7 +5,7 @@
 
 from tools.quiz_prompts import generate_topic_list_prompt, generate_questions_prompt
 from langchain_openai import ChatOpenAI
-from langchain.schema.runnable import RunnableLambda
+from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.language_handler import LanguageHandler
 from RAGModule.rag import RAGHandler
@@ -55,14 +55,16 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
         if use_rag:
             rag = RAGHandler()
             rag.load_vectorstore()
-            question_chain = RunnableLambda(
-                lambda inputs: (
-                    rag.get_context(inputs["topic"], k=3)
-                    + "\n\n"
-                    + generate_questions_prompt(inputs["topic"], language=language)
-                        .format_prompt(topic=inputs["topic"])
-                )
-            ) | llm
+
+            context_chain = RunnableLambda(lambda inputs: rag.get_context(inputs["topic"], k=3))
+            prompt_chain = RunnableLambda(
+                lambda inputs: generate_questions_prompt(inputs["topic"], language=language)
+                    .format_prompt(topic=inputs["topic"])
+            )
+
+            question_chain = RunnableParallel({"ctx": context_chain, "prompt": prompt_chain}) \
+                | RunnableLambda(lambda d: d["ctx"] + "\n\n" + d["prompt"]) \
+                | llm
         else:
             question_chain = RunnableLambda(
                 lambda inputs: generate_questions_prompt(inputs["topic"], language=language)
