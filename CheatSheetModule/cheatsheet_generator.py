@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
+from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
 from RAGModule.rag import RAGHandler
 
 # TODO: test and optimize
@@ -50,29 +50,26 @@ Respond in this language only: {language}
         Args:
             input_text: topic or material for which to generate the cheat sheet
             language: language code for the output
-            use_rag: if True, retrieve relevant chunks and run RetrievalQA
+            use_rag: if True, fetch additional context from your documents
 
         Returns:
             Generated cheat sheet as string.
         """
-        if use_rag:
-            # 🔍 Build/load vectorstore and retriever
+        def _fetch_context(inputs):
             rag = RAGHandler()
             rag.load_vectorstore()
-            retriever = rag.vectordb.as_retriever(search_kwargs={"k": 3})
+            ctx = rag.get_context(inputs["input"], k=3)
+            return {"input": inputs["input"], "language": inputs["language"], "context": ctx}
 
-            # 🤖 RetrievalQA chain
-            qa = RetrievalQA.from_chain_type(
-                llm=self.llm,
-                chain_type="stuff",
-                retriever=retriever
-            )
-            return qa.run(input_text)
+        def _skip_context(inputs):
+            return {"input": inputs["input"], "language": inputs["language"], "context": ""}
 
-        # 🔄 Fallback: standard prompt → LLM
-        chain = self.prompt | self.llm
-        response = chain.invoke({
-            "input": input_text,
-            "language": language
-        })
+        branch = RunnableBranch(
+            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
+            RunnableLambda(_skip_context)
+        )
+
+        chain = RunnableSequence(branch, self.prompt | self.llm)
+
+        response = chain.invoke({"input": input_text, "language": language, "use_rag": use_rag})
         return response.content

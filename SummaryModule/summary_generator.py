@@ -1,8 +1,8 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from tools.language_handler import LanguageHandler
-from langchain.chains import RetrievalQA
-from RAGModule.rag import RAGHandler 
+from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
+from RAGModule.rag import RAGHandler
 
 # TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect. 
 
@@ -58,24 +58,27 @@ Respond in {language}.
     ) -> str:
         """
         Generate a detailed study summary using the configured LLM and prompt.
+        If ``use_rag`` is True, the generator first retrieves context from your
+        indexed documents and prepends it to the prompt.
         """
         lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language
 
-        # if self.retriever:
-        #     # Retrieval-augmented generation
-        #     qa = RetrievalQA.from_chain_type(
-        #         llm=self.llm,
-        #         chain_type="stuff",
-        #         retriever=self.retriever
-        #     )
-        #     return qa.run(input_text)
-
-        if use_rag:
+        def _fetch_context(inputs):
             rag = RAGHandler()
             rag.load_vectorstore()
-            docs_context = rag.get_context(input_text, k=3)
-            input_text = f"{docs_context}\n\n### Topic:\n{input_text}"
+            ctx = rag.get_context(inputs["input"], k=3)
+            inputs["input"] = f"{ctx}\n\n### Topic:\n{inputs['input']}"
+            return inputs
 
-        chain = self.base_prompt | self.llm
-        response = chain.invoke({"input": input_text, "language": lang})
+        def _skip_context(inputs):
+            return inputs
+
+        branch = RunnableBranch(
+            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
+            RunnableLambda(_skip_context)
+        )
+
+        chain = RunnableSequence(branch, self.base_prompt | self.llm)
+
+        response = chain.invoke({"input": input_text, "language": lang, "use_rag": use_rag})
         return response.content
