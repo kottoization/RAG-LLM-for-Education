@@ -56,18 +56,24 @@ class FlashcardSet:
             except Exception as e:
                 print(f"⚠️ Error parsing block: {e}")
 
-    def generate_from_prompt(self, topic_prompt: str, language: str = "en", use_rag: bool = False):
+    def generate_from_prompt(self, topic_prompt: str, language: str = "en", use_rag: bool = False, retriever=None):
         """
         Uses an LLM (optionally with RAG) to generate flashcards based on a topic prompt.
         When ``use_rag`` is True, additional context from your indexed documents is
-        fetched and prepended to the prompt.
+        fetched and prepended to the prompt. An external ``retriever`` can be
+        provided to avoid creating a new :class:`RAGHandler`.
         """
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
+        retriever = retriever or self.retriever
 
         def _fetch_context(inputs):
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            ctx = rag.get_context(inputs["topic_prompt"], k=3)
+            if retriever:
+                docs = retriever.get_relevant_documents(inputs["topic_prompt"])
+                ctx = "\n\n".join([doc.page_content for doc in docs])
+            else:
+                rag = RAGHandler()
+                rag.load_vectorstore()
+                ctx = rag.get_context(inputs["topic_prompt"], k=3)
             return {**inputs, "context": ctx}
 
         def _skip_context(inputs):
@@ -104,11 +110,11 @@ class FlashcardSet:
 
         try:
             # if retriever provided, use RAG for richer context
-            if self.retriever:
+            if retriever:
                 qa = RetrievalQA.from_chain_type(
                     llm=llm,
                     chain_type="stuff",
-                    retriever=self.retriever
+                    retriever=retriever
                 )
                 raw_output = qa.run(topic_prompt)
             else:
