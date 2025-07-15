@@ -56,9 +56,14 @@ Respond in this language only: {language}
             Generated cheat sheet as string.
         """
         def _fetch_context(inputs):
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            ctx = rag.get_context(inputs["input"], k=3)
+            """Retrieve context from the provided retriever or a temporary RAG handler."""
+            if self.retriever is not None:
+                docs = self.retriever.get_relevant_documents(inputs["input"])
+                ctx = "\n\n".join(doc.page_content for doc in docs)
+            else:
+                rag = RAGHandler()
+                rag.load_vectorstore()
+                ctx = rag.get_context(inputs["input"], k=3)
             return {"input": inputs["input"], "language": inputs["language"], "context": ctx}
 
         def _skip_context(inputs):
