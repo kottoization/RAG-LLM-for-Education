@@ -7,7 +7,7 @@ from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
 from langchain_openai import ChatOpenAI
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
-from RAGModule import RAGService
+from RAGModule import RAGHandler
 import os
 
 # Load environment variables from .env
@@ -49,10 +49,10 @@ def main_menu():
     """
     Main menu for the application.
     """
-    # Initialize RAGService and retriever (optional)
+    # Initialize RAG handler and retriever (optional)
     try:
-        rag_service = RAGService()
-        retriever = rag_service.get_retriever(k=5)
+        rag = RAGHandler()
+        retriever = rag.get_retriever(k=5)
     except Exception as e:
         print(f"[RAG Init Error] {e}")
         retriever = None

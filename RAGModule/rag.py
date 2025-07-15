@@ -67,16 +67,16 @@ class RAGHandler:
         """
         docs: List[Document] = []
 
-        # 📄 Load TXT files
-        for txt_path in self.rag_path.glob("*.txt"):
+        # 📄 Load TXT files (search recursively)
+        for txt_path in self.rag_path.rglob("*.txt"):
             try:
                 loader = TextLoader(str(txt_path))
                 docs.extend(loader.load())
             except Exception as e:
                 print(f"❌ Error loading {txt_path}: {e}")
 
-        # 📄 Load PDF files
-        for pdf_path in self.rag_path.glob("*.pdf"):
+        # 📄 Load PDF files (search recursively)
+        for pdf_path in self.rag_path.rglob("*.pdf"):
             try:
                 loader = PyPDFLoader(str(pdf_path))
                 docs.extend(loader.load())
@@ -157,6 +157,11 @@ class RAGHandler:
             retriever=db.as_retriever(search_kwargs={"k": k})
         )  # 🤖
         return qa_chain.run(query)
+
+    def get_retriever(self, k: int = 5):
+        """Return a retriever over the loaded vector store."""
+        db = self.load_vectorstore()
+        return db.as_retriever(search_kwargs={"k": k})
 
     def chat(
         self,
