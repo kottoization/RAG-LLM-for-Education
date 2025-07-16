@@ -68,7 +68,12 @@ Respond in this language only: {language}
                 rag = RAGHandler()
                 rag.load_vectorstore()
                 ctx = rag.get_context(inputs["input"], k=3)
-            return {"input": inputs["input"], "language": inputs["language"], "context": ctx}
+            return {
+                "input": inputs["input"],
+                "language": inputs["language"],
+                "context": ctx,
+            }
+
 
         def _skip_context(inputs):
             return {"input": inputs["input"], "language": inputs["language"], "context": ""}
