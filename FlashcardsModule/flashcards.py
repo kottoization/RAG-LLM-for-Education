@@ -109,8 +109,8 @@ class FlashcardSet:
         chain = RunnableSequence(branch, RunnableLambda(_build_prompt) | llm)
 
         try:
-            # Use provided retriever only when RAG is enabled
-            if use_rag and self.retriever:
+            # Use any available retriever only when RAG is enabled
+            if use_rag and retriever:
                 qa = RetrievalQA.from_chain_type(
                     llm=llm,
                     chain_type="stuff",
