@@ -63,6 +63,7 @@ Respond in this language only: {language}
             if retriever:
                 docs = retriever.get_relevant_documents(inputs["input"])
                 ctx = "\n\n".join([doc.page_content for doc in docs])
+
             else:
                 rag = RAGHandler()
                 rag.load_vectorstore()

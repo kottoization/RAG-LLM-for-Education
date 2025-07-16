@@ -60,8 +60,8 @@ class FlashcardSet:
         """
         Uses an LLM (optionally with RAG) to generate flashcards based on a topic prompt.
         When ``use_rag`` is True, additional context from your indexed documents is
-        fetched and prepended to the prompt. An external ``retriever`` can be
-        provided to avoid creating a new :class:`RAGHandler`.
+        fetched and prepended to the prompt. If a ``retriever`` was supplied and
+        ``use_rag`` is ``True``, it is used via ``RetrievalQA`` for generation.
         """
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
         retriever = retriever or self.retriever
@@ -109,8 +109,8 @@ class FlashcardSet:
         chain = RunnableSequence(branch, RunnableLambda(_build_prompt) | llm)
 
         try:
-            # if retriever provided, use RAG for richer context
-            if retriever:
+            # Use provided retriever only when RAG is enabled
+            if use_rag and self.retriever:
                 qa = RetrievalQA.from_chain_type(
                     llm=llm,
                     chain_type="stuff",
@@ -118,7 +118,11 @@ class FlashcardSet:
                 )
                 raw_output = qa.run(topic_prompt)
             else:
-                response = chain.invoke({"topic_prompt": topic_prompt, "language": language, "use_rag": use_rag})
+                response = chain.invoke({
+                    "topic_prompt": topic_prompt,
+                    "language": language,
+                    "use_rag": use_rag,
+                })
                 raw_output = response.content
 
             pairs = re.findall(r"Q:\s*(.+?)\nA:\s*(.+?)(?=\nQ:|\Z)", raw_output, re.DOTALL)

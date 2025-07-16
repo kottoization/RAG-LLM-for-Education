@@ -68,6 +68,7 @@ Respond in {language}.
 
         def _fetch_context(inputs):
             if retriever:
+            """Retrieve additional context using RAG if a retriever is provided."""
                 docs = retriever.get_relevant_documents(inputs["input"])
                 ctx = "\n\n".join([doc.page_content for doc in docs])
             else:
