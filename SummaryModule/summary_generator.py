@@ -64,9 +64,13 @@ Respond in {language}.
         lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language
 
         def _fetch_context(inputs):
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            ctx = rag.get_context(inputs["input"], k=3)
+            if self.retriever:
+                docs = self.retriever.get_relevant_documents(inputs["input"])
+                ctx = "\n\n".join(doc.page_content for doc in docs)
+            else:
+                rag = RAGHandler()
+                rag.load_vectorstore()
+                ctx = rag.get_context(inputs["input"], k=3)
             inputs["input"] = f"{ctx}\n\n### Topic:\n{inputs['input']}"
             return inputs
 
