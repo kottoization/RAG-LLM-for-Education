@@ -49,6 +49,11 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False, ret
             raise ValueError(f"Error generating topics: {e}")
 
         topics = [t.strip() for t in topics if t.strip()]
+
+        if not topics:
+            print("\u26a0\ufe0f No topics generated. Please try a different subject.")
+            return {}
+
         max_questions = 20
         max_topics = min(len(topics), 5)
         topics = topics[:max_topics]
