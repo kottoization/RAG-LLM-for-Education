@@ -48,6 +48,11 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
         max_questions = 20
         max_topics = min(len(topics), 5)
         topics = topics[:max_topics]
+
+        if max_topics == 0:
+            print("No quiz topics generated.")
+            return {}
+
         questions_per_topic = max_questions // max_topics
 
         # Generate questions in parallel
