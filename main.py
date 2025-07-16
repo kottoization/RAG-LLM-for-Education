@@ -15,32 +15,53 @@ dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
 def chat_with_bot():
-    """
-    Allows the user to chat freely with the bot, maintaining a chat history.
-    """
+    """Chat with the assistant. Optionally use RAG for document context."""
     try:
-        model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
-        chat_history = []  # Store conversation history
+        use_rag = input(
+            "Enrich answers with your documents? (y/N): "
+        ).strip().lower() == "y"
 
-        # Initial system message
-        system_message = SystemMessage(content="You are a helpful AI assistant.")
-        chat_history.append(system_message)
+        chat_history = []
 
-        print("You can now chat with the bot. Type 'exit' or 'q' to quit.")
+        if use_rag:
+            rag = RAGHandler()
+            rag.load_vectorstore()
+            print(
+                "RAG mode enabled. You can now chat with the bot. Type 'exit' or 'q' to quit."
+            )
+        else:
+            model = ChatOpenAI(
+                model="gpt-3.5-turbo", temperature=0.1, verbose=True
+            )
+            system_message = SystemMessage(content="You are a helpful AI assistant.")
+            chat_history.append(system_message)
+            print("You can now chat with the bot. Type 'exit' or 'q' to quit.")
+
         while True:
             query = input("You: ")
-            if query.lower() in ["exit", "q"]:  # Allow 'exit' or 'q' to quit
+            if query.lower() in ["exit", "q"]:
                 break
 
-            chat_history.append(HumanMessage(content=query))  # Add user message
-            response = model.invoke(chat_history)  # Get AI response
-            print(f"AI: {response.content}")
-
-            chat_history.append(AIMessage(content=response.content))  # Add AI message
+            if use_rag:
+                result = rag.chat(chat_history, query, k=3)
+                answer = result.get("answer") or result.get("result", "")
+                print(f"AI: {answer}")
+                chat_history.append((query, answer))
+            else:
+                chat_history.append(HumanMessage(content=query))
+                response = model.invoke(chat_history)
+                print(f"AI: {response.content}")
+                chat_history.append(AIMessage(content=response.content))
 
         print("---- Message History ----")
-        for msg in chat_history:
-            print(msg.content)
+        if use_rag:
+            for q, a in chat_history:
+                if isinstance(q, str) and isinstance(a, str):
+                    print(f"You: {q}")
+                    print(f"AI: {a}")
+        else:
+            for msg in chat_history:
+                print(msg.content)
 
     except Exception as e:
         print(f"An error occurred while chatting with the bot: {e}")
