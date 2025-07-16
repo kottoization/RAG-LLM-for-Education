@@ -85,7 +85,7 @@ def main_menu():
             language = LanguageHandler.choose_or_detect(subject)
             # pass retriever to quiz (RAG-enabled if available)
             use_rag = input("Use RAG to generate quiz topics? (y/N): ").strip().lower()=="y"
-            generate_quiz(subject, language=language, use_rag=use_rag)
+            generate_quiz(subject, language=language, use_rag=use_rag, retriever=retriever)
 
         elif choice == "3":
             print("\nSelect an option:")
@@ -96,7 +96,7 @@ def main_menu():
             if sub_choice == "1":
                 subject = input("Enter the subject for the quiz: ")
                 language = LanguageHandler.choose_or_detect(subject)
-                quiz_results = generate_quiz(subject, language=language)
+                quiz_results = generate_quiz(subject, language=language, retriever=retriever)
                 user_name = input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
             elif sub_choice == "2":
@@ -117,7 +117,7 @@ def main_menu():
             # pass retriever to flashcards
             flashcards = FlashcardSet(topic, retriever=retriever)
             use_rag = input("Enrich flashcards with your documents? (y/N): ").strip().lower()=="y"
-            flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag)
+            flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag, retriever=retriever)
             print(flashcards.to_dict_list())
             flashcards.save_to_file()
 
@@ -131,9 +131,9 @@ def main_menu():
             topic = input("Enter the topic or material for TL;DR summary: ")
             language = LanguageHandler.choose_or_detect(topic)
             # pass retriever to summary
-            summarizer = StudySummaryGenerator()
+            summarizer = StudySummaryGenerator(retriever=retriever)
             use_rag = input("Enrich summary with your documents? (y/N): ").strip().lower()=="y"
-            summary = summarizer.generate_summary(topic, language=language, use_rag=use_rag)
+            summary = summarizer.generate_summary(topic, language=language, use_rag=use_rag, retriever=retriever)
             print("\n📘 Summary:\n")
             print(summary)
 
@@ -143,7 +143,7 @@ def main_menu():
             # pass retriever to cheat sheet generator
             generator = CheatSheetGenerator(retriever=retriever)
             use_rag = input("Enrich cheat sheet with your documents? (y/N): ").strip().lower()=="y"
-            cheatsheet = generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
+            cheatsheet = generator.generate_cheatsheet(topic, language=language, use_rag=use_rag, retriever=retriever)
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
 

@@ -54,20 +54,23 @@ Respond in {language}.
         self,
         input_text: str,
         language: str = "en",
-        use_rag: bool = False
+        use_rag: bool = False,
+        retriever=None
     ) -> str:
         """
         Generate a detailed study summary using the configured LLM and prompt.
-        If ``use_rag`` is True, the generator first retrieves context from your
-        indexed documents and prepends it to the prompt.
+        If ``use_rag`` is True, an external ``retriever`` can be supplied for
+        context; otherwise a new :class:`RAGHandler` will be used.
         """
         lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language
 
+        retriever = retriever or self.retriever
+
         def _fetch_context(inputs):
+            if retriever:
             """Retrieve additional context using RAG if a retriever is provided."""
-            if self.retriever is not None:
-                docs = self.retriever.get_relevant_documents(inputs["input"])
-                ctx = "\n\n".join(doc.page_content for doc in docs)
+                docs = retriever.get_relevant_documents(inputs["input"])
+                ctx = "\n\n".join([doc.page_content for doc in docs])
             else:
                 rag = RAGHandler()
                 rag.load_vectorstore()
