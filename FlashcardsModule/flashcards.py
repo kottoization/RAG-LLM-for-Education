@@ -134,15 +134,13 @@ class FlashcardSet:
         except Exception as e:
             print(f"❌ Error generating flashcards from prompt: {e}")
 
-    # def run_cli_review(self):
-    #     """
-    #     CLI for reviewing flashcards. Asks user for input and shows correct answer.
-    #     """
-    #     print(f"\n📚 Reviewing flashcards for topic: {self.topic}")
-    #     for i, card in enumerate(self.flashcards, start=1):
-    #         print(f"\n{i}. {card.question}")
-    #         input("Your answer: ")
-    #         print(f"✅ Correct answer: {card.answer}")
+    def run_cli_review(self):
+        """Simple CLI loop for reviewing the flashcards."""
+        print(f"\n📚 Reviewing flashcards for topic: {self.topic}")
+        for i, card in enumerate(self.flashcards, start=1):
+            print(f"\n{i}. {card.question}")
+            input("Your answer: ")
+            print(f"✅ Correct answer: {card.answer}")
 
     def save_to_file(self, base_dir="data/flashcards/"):
         """
