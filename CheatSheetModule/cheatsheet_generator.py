@@ -42,7 +42,8 @@ Respond in this language only: {language}
         self,
         input_text: str,
         language: str = "en",
-        use_rag: bool = False
+        use_rag: bool = False,
+        retriever=None
     ) -> str:
         """
         Generate a cheat sheet; uses RAG if use_rag=True.
@@ -51,14 +52,18 @@ Respond in this language only: {language}
             input_text: topic or material for which to generate the cheat sheet
             language: language code for the output
             use_rag: if True, fetch additional context from your documents
+            retriever: optional external retriever to supply that context
 
         Returns:
             Generated cheat sheet as string.
         """
+        retriever = retriever or self.retriever
+
         def _fetch_context(inputs):
-            if self.retriever:
-                docs = self.retriever.get_relevant_documents(inputs["input"])
-                ctx = "\n\n".join(doc.page_content for doc in docs)
+            if retriever:
+                docs = retriever.get_relevant_documents(inputs["input"])
+                ctx = "\n\n".join([doc.page_content for doc in docs])
+
             else:
                 rag = RAGHandler()
                 rag.load_vectorstore()
@@ -68,6 +73,7 @@ Respond in this language only: {language}
                 "language": inputs["language"],
                 "context": ctx,
             }
+
 
         def _skip_context(inputs):
             return {"input": inputs["input"], "language": inputs["language"], "context": ""}
