@@ -10,10 +10,11 @@ from LearningPlanModule.learning_plan import LearningPlan
 from tools.language_handler import LanguageHandler
 from RAGModule.rag import RAGHandler
 
-def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
+def generate_quiz(subject: str, language: str = "en", use_rag: bool = False, retriever=None):
     """
     Generates a quiz based on the provided subject using parallel chains.
-    If use_rag is True, fetches relevant documents for context via RAG.
+    If ``use_rag`` is True, optional ``retriever`` supplies context; otherwise a
+    new :class:`RAGHandler` is created.
     """
     try:
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
@@ -21,9 +22,12 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
         # Optional RAG context fetch
         context = ""
         if use_rag:
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            docs = rag.semantic_search(subject, k=3)
+            if retriever:
+                docs = retriever.get_relevant_documents(subject)
+            else:
+                rag = RAGHandler()
+                rag.load_vectorstore()
+                docs = rag.semantic_search(subject, k=3)
             context = "\n\n".join([doc.page_content for doc in docs])
             print(f"[RAG] Retrieved {len(docs)} documents for context.")
 
@@ -45,6 +49,11 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
             raise ValueError(f"Error generating topics: {e}")
 
         topics = [t.strip() for t in topics if t.strip()]
+
+        if not topics:
+            print("\u26a0\ufe0f No topics generated. Please try a different subject.")
+            return {}
+
         max_questions = 20
         max_topics = min(len(topics), 5)
         topics = topics[:max_topics]
@@ -53,10 +62,12 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False):
         # Generate questions in parallel
         print("Generating questions for all topics...")
         if use_rag:
-            rag = RAGHandler()
-            rag.load_vectorstore()
-
-            context_chain = RunnableLambda(lambda inputs: rag.get_context(inputs["topic"], k=3))
+            if retriever:
+                context_chain = RunnableLambda(lambda inputs: "\n\n".join([doc.page_content for doc in retriever.get_relevant_documents(inputs["topic"])]))
+            else:
+                rag = RAGHandler()
+                rag.load_vectorstore()
+                context_chain = RunnableLambda(lambda inputs: rag.get_context(inputs["topic"], k=3))
             prompt_chain = RunnableLambda(
                 lambda inputs: generate_questions_prompt(inputs["topic"], language=language)
                     .format_prompt(topic=inputs["topic"])

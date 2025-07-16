@@ -9,4 +9,4 @@ This module provides tools for:
 """
 
 from .rag import RAGHandler
-from .rag_service import RAGService
+
