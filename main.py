@@ -117,7 +117,8 @@ def main_menu():
             if sub_choice == "1":
                 subject = input("Enter the subject for the quiz: ")
                 language = LanguageHandler.choose_or_detect(subject)
-                quiz_results = generate_quiz(subject, language=language, retriever=retriever)
+                use_rag = input("Use RAG to generate quiz topics? (y/N): ").strip().lower()=="y"
+                quiz_results = generate_quiz(subject, language=language, use_rag=use_rag, retriever=retriever)
                 user_name = input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
             elif sub_choice == "2":
