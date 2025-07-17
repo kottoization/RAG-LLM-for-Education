@@ -9,6 +9,7 @@ from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.language_handler import LanguageHandler
 from RAGModule.rag import RAGHandler
+from tools.auto_answer import auto_answer
 
 def generate_quiz(subject: str, language: str = "en", use_rag: bool = False, retriever=None):
     """
@@ -104,7 +105,11 @@ def generate_quiz(subject: str, language: str = "en", use_rag: bool = False, ret
             for question in question_texts:
                 try:
                     print(question)
-                    user_answer = input("Your answer: ").strip().lower()
+                    while True:
+                        user_answer = input("Your answer: ")
+                        if not auto_answer(user_answer):
+                            break
+                    user_answer = user_answer.strip().lower()
                     raw_correct = question.split("Correct Answer: ")[-1].strip().lower()
                     correct_answer = raw_correct[0] if raw_correct and raw_correct[0] in ['a','b','c','d'] else "?"
                     if user_answer == correct_answer:

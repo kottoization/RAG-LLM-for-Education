@@ -6,6 +6,7 @@ from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
 from langchain.chains import RetrievalQA
 from RAGModule.rag import RAGHandler
+from tools.auto_answer import auto_answer
 
 class Flashcard:
     """
@@ -139,7 +140,10 @@ class FlashcardSet:
         print(f"\n📚 Reviewing flashcards for topic: {self.topic}")
         for i, card in enumerate(self.flashcards, start=1):
             print(f"\n{i}. {card.question}")
-            input("Your answer: ")
+            while True:
+                user = input("Your answer: ")
+                if not auto_answer(user):
+                    break
             print(f"✅ Correct answer: {card.answer}")
 
     def save_to_file(self, base_dir="data/flashcards/"):

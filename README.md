@@ -126,6 +126,13 @@ pytest tests/
 - **`README.md`**: Project documentation.
 - **`.gitignore`**: File ignoring temporary files, dependencies, and sensitive data.
 
+### Auto-answer
+
+Whenever an input string ends with a question mark, the system treats it as an
+on-demand question for the agent. The agent's reply is printed and the prompt is
+repeated. This behaviour is used throughout the CLI, including during quiz
+answers and flashcard review.
+
 ## Author
 
 - **Mateusz Mulka** - [GitHub](https://github.com/kottoization)
