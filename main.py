@@ -5,6 +5,7 @@ from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
 from AgentModule import create_agent
+from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 from RAGModule import RAGHandler
 import os
@@ -20,9 +21,7 @@ _agent = create_agent()
 def prompt_input(prompt: str) -> str:
     """Input wrapper that auto-runs the agent on questions."""
     user = input(prompt).strip()
-    if user.endswith("?"):
-        answer = _agent.invoke({"input": user})["output"]
-        print(f"\n🤖 Agent Answer:\n{answer}\n")
+    if auto_answer(user, _agent):
         return prompt_input(prompt)
     return user
 
