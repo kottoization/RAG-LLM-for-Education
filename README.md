@@ -1,4 +1,4 @@
-ℹ⚠This readme file might be outdated if you see this message. It will be updated once the whole project is ready.
+‼ ⚠ This readme file might be outdated if you see this message. It will be updated once the whole project is ready.
 # EduGen
 
 EduGen is a microservices-based application aimed at supporting the learning process. The project consists of two main Python microservices, leveraging RAG (Retrieval-Augmented Generation) with LLM (Large Language Model) to generate educational content such as quizzes, learning plans, summaries, and cheat sheets.
@@ -125,6 +125,13 @@ pytest tests/
 - **`rag_llm_service/`**: Educational content generation microservice.
 - **`README.md`**: Project documentation.
 - **`.gitignore`**: File ignoring temporary files, dependencies, and sensitive data.
+
+### Auto-answer
+
+Whenever an input string ends with a question mark, the system treats it as an
+on-demand question for the agent. The agent's reply is printed and the prompt is
+repeated. This behaviour is used throughout the CLI, including during quiz
+answers and flashcard review.
 
 ## Author
 
