@@ -87,6 +87,15 @@ cd rag_llm_service
 uvicorn api.main:app --reload --port 8002
 ```
 
+### `frontend_service`
+
+Launch the Gradio web interface:
+
+```bash
+cd frontend_service
+python main.py
+```
+
 Each microservice will be available on the respective port (e.g., `http://localhost:8001` for `pdf_processing_service`).
 
 ## Testing
@@ -123,6 +132,7 @@ pytest tests/
 
 - **`pdf_processing_service/`**: PDF processing and embedding generation microservice.
 - **`rag_llm_service/`**: Educational content generation microservice.
+- **`frontend_service/`**: Gradio-based chat frontend.
 - **`README.md`**: Project documentation.
 - **`.gitignore`**: File ignoring temporary files, dependencies, and sensitive data.
 
