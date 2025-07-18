@@ -1,156 +1,74 @@
-‼ ⚠ This readme file might be outdated if you see this message. It will be updated once the whole project is ready.
 # EduGen
 
-EduGen is a microservices-based application aimed at supporting the learning process. The project consists of two main Python microservices, leveraging RAG (Retrieval-Augmented Generation) with LLM (Large Language Model) to generate educational content such as quizzes, learning plans, summaries, and cheat sheets.
+EduGen is a collection of utilities for generating learning materials with the help of Large Language Models.  
+The repository contains a command line interface together with a simple Gradio based frontend.  
+It can generate quizzes, flashcards, summaries and cheat sheets.  
+Optionally the tools can use RAG (Retrieval Augmented Generation) on your local documents.
 
 ## Table of Contents
-
-- [Project Description](#project-description)
-- [Architecture](#architecture)
 - [Requirements](#requirements)
 - [Installation](#installation)
-- [Running the Microservices](#running-the-microservices)
+- [Usage](#usage)
+  - [CLI](#cli)
+  - [Gradio Frontend](#gradio-frontend)
+- [Project Structure](#project-structure)
 - [Testing](#testing)
-- [Technologies Used](#technologies-used)
 - [Author](#author)
 
-## Project Description
-
-EduGen is an application that assists the learning process by generating personalized educational content. The project consists of two microservices:
-- `pdf_processing_service` - Responsible for processing PDF documents, generating embeddings, and indexing them.
-- `rag_llm_service` - Integrates with the LLM model to generate quizzes, learning plans, summaries, and cheat sheets based on the provided material.
-
-## Architecture
-
-The project is built based on microservices that communicate via REST APIs. Each microservice has a dedicated responsibility:
-- **`pdf_processing_service`**: Handles PDF documents, extracts content, generates embeddings, and stores them in a vector database (e.g., Pinecone).
-- **`rag_llm_service`**: Uses LLM to generate educational content based on the provided data.
-
-The microservices will later be integrated via an API Gateway, such as **Ocelot**, and the entire system will be scaled in a microservices architecture.
-
 ## Requirements
-
-- Python 3.8+
-- Pipenv / venv for virtual environment management
-- Libraries listed in `requirements.txt` for each microservice
-- API key for OpenAI (for LLM integration)
-- Pinecone account (optional, for storing embeddings)
+- Python 3.10+
+- An OpenAI API key set in the `OPENAI_API_KEY` environment variable or in a `.env` file
+- Packages from `requirements.txt`
 
 ## Installation
-
-### Step 1: Clone the Repository
+Clone the repository and install the dependencies:
 
 ```bash
 git clone https://github.com/kottoization/EduGen.git
 cd EduGen
-```
-
-### Step 2: Install Dependencies
-
-#### `pdf_processing_service`
-
-```bash
-cd pdf_processing_service
-python -m venv venv
-source venv/bin/activate  # For Unix systems
-# .\venv\Scripts\activate  # For Windows
 pip install -r requirements.txt
 ```
 
-#### `rag_llm_service`
+Create a `.env` file containing your OpenAI key:
 
 ```bash
-cd ../rag_llm_service
-python -m venv venv
-source venv/bin/activate  # For Unix systems
-# .\venv\Scripts\activate  # For Windows
-pip install -r requirements.txt
+OPENAI_API_KEY=your-key-here
 ```
 
-## Running the Microservices
+## Usage
 
-### `pdf_processing_service`
-
-Run the FastAPI server:
-
-```bash
-cd pdf_processing_service
-uvicorn api.main:app --reload --port 8001
-```
-
-### `rag_llm_service`
-
-Run the FastAPI server:
+### CLI
+Run the interactive console menu:
 
 ```bash
-cd rag_llm_service
-uvicorn api.main:app --reload --port 8002
-```
-
-### `frontend_service`
-
-Launch the Gradio web interface:
-
-```bash
-cd frontend_service
 python main.py
 ```
 
-Each microservice will be available on the respective port (e.g., `http://localhost:8001` for `pdf_processing_service`).
+The menu lets you chat with the assistant, generate quizzes, summaries, flashcards and learning plans.  
+If RAG documents are indexed (see `RAGModule`), some tools can enrich answers with your own files.
+
+### Gradio Frontend
+A minimal chat UI is provided using Gradio.  Start it with:
+
+```bash
+python frontend_service/main.py
+```
+
+The frontend imports the same agent used by the CLI so you get identical behaviour in the browser.
+
+## Project Structure
+- `AgentModule/` – creation of the LangChain agent and reusable tools
+- `RAGModule/` – utilities for loading documents and building a Chroma vector store
+- `QuizModule/`, `FlashcardsModule/`, `LearningPlanModule/`, `SummaryModule/`, `CheatSheetModule/` – content generation helpers
+- `frontend_service/` – Gradio based chat interface
+- `data/` – example data and vector store persistence
 
 ## Testing
-
-To test the modules, use `pytest`.
-
-### Example of Running Tests:
-
-#### `pdf_processing_service`
+No automated tests are provided yet, but you can run `pytest` to verify that none are failing:
 
 ```bash
-cd pdf_processing_service
-pytest tests/
+pytest
 ```
-
-#### `rag_llm_service`
-
-```bash
-cd rag_llm_service
-pytest tests/
-```
-
-## Technologies Used
-
-- **Python**: Programming language used to develop the microservices.
-- **FastAPI**: Framework for building REST APIs.
-- **OpenAI API**: For generating content using LLM.
-- **Sentence Transformers**: For generating text embeddings.
-- **Pinecone/Faiss**: For storing and retrieving embeddings.
-- **Redis**: For caching responses.
-- **Pytest**: Tool for testing the code.
-
-## Project Files and Structure
-
-- **`pdf_processing_service/`**: PDF processing and embedding generation microservice.
-- **`rag_llm_service/`**: Educational content generation microservice.
-- **`frontend_service/`**: Gradio-based chat frontend.
-- **`README.md`**: Project documentation.
-- **`.gitignore`**: File ignoring temporary files, dependencies, and sensitive data.
-
-### Auto-answer
-
-Whenever an input string ends with a question mark, the system treats it as an
-on-demand question for the agent. The agent's reply is printed and the prompt is
-repeated. This behaviour is used throughout the CLI, including during quiz
-answers and flashcard review.
 
 ## Author
-
-- **Mateusz Mulka** - [GitHub](https://github.com/kottoization)
-
----
-
-### Notes
-
-- Make sure the `.env` file is correctly configured before running the microservices.
-- Adjust configuration parameters in `config.yaml` files and other settings as needed for your project.
-- Before deploying to production, test the scalability, performance, and security of each microservice.
+Mateusz Mulka – [kottoization](https://github.com/kottoization)
