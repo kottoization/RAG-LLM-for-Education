@@ -9,10 +9,19 @@ from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 from RAGModule import RAGHandler
 import os
+import warnings
+from langchain_core._api import LangChainDeprecationWarning
 
 # Load environment variables from .env
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
+
+warnings.filterwarnings(
+    "ignore",
+    message="fields may not start with an underscore",
+    category=RuntimeWarning,
+)
+warnings.filterwarnings("ignore", category=LangChainDeprecationWarning)
 
 # Create a single agent instance for handling on-demand questions
 _agent = create_agent()

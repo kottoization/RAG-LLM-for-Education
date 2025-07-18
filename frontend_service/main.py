@@ -2,7 +2,10 @@ import io
 from contextlib import redirect_stdout
 
 import gradio as gr
+import os
+import sys
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from AgentModule import create_agent
 
 agent = create_agent()

@@ -5,7 +5,7 @@ from typing import List, Optional
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI

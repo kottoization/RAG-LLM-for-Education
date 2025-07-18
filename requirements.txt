@@ -23,6 +23,7 @@ pydantic-core==2.27.2
 
 # RAG dependencies
 chromadb>=0.4.0
+langchain-chroma
 pypdf>=3.14.0
 unstructured>=0.12.0
 
