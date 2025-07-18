@@ -16,7 +16,7 @@ Optionally the tools can use RAG (Retrieval Augmented Generation) on your local 
 - [Author](#author)
 
 ## Requirements
-- Python 3.11+
+- Python 3.10+
 - An OpenAI API key set in the `OPENAI_API_KEY` environment variable or in a `.env` file
 - Packages from `requirements.txt`
 
