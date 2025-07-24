@@ -5,6 +5,7 @@ from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
 from AgentModule import create_agent
+from frontend_service import launch_gradio
 from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 from RAGModule import RAGHandler
@@ -185,4 +186,8 @@ def main_menu():
             print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
-    main_menu()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
+        main_menu()
+    else:
+        launch_gradio()

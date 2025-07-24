@@ -38,23 +38,29 @@ OPENAI_API_KEY=your-key-here
 ## Usage
 
 ### CLI
-Run the interactive console menu:
+Run the interactive console menu (optional):
+
+```bash
+python main.py --cli
+```
+
+The menu lets you chat with the assistant, generate quizzes, summaries, flashcards and learning plans.
+If RAG documents are indexed (see `RAGModule`), some tools can enrich answers with your own files.
+
+### Gradio Frontend
+The application now launches the Gradio interface by default:
 
 ```bash
 python main.py
 ```
 
-The menu lets you chat with the assistant, generate quizzes, summaries, flashcards and learning plans.  
-If RAG documents are indexed (see `RAGModule`), some tools can enrich answers with your own files.
-
-### Gradio Frontend
-A minimal chat UI is provided using Gradio.  Start it with:
+You can also run the standalone frontend directly with:
 
 ```bash
 python frontend_service/main.py
 ```
 
-The frontend imports the same agent used by the CLI so you get identical behaviour in the browser.
+Both entry points import the same agent used by the optional CLI so you get identical behaviour in the browser.
 
 ## Project Structure
 - `AgentModule/` – creation of the LangChain agent and reusable tools
