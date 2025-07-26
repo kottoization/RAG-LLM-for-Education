@@ -23,6 +23,7 @@ pydantic-core==2.27.2
 
 # RAG dependencies
 chromadb>=0.4.0
+langchain-chroma
 pypdf>=3.14.0
 unstructured>=0.12.0
 
@@ -32,4 +33,8 @@ python-magic-bin>=0.4.14; platform_system == "Windows"
 # Extra tools
 wikipedia
 nltk
+deep-translator
 
+fastapi>=0.111
+starlette>=0.32
+gradio>=4.44.1

@@ -5,14 +5,24 @@ from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
 from AgentModule import create_agent
+from frontend_service import launch_gradio
 from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 from RAGModule import RAGHandler
 import os
+import warnings
+from langchain_core._api import LangChainDeprecationWarning
 
 # Load environment variables from .env
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
+
+warnings.filterwarnings(
+    "ignore",
+    message="fields may not start with an underscore",
+    category=RuntimeWarning,
+)
+warnings.filterwarnings("ignore", category=LangChainDeprecationWarning)
 
 # Create a single agent instance for handling on-demand questions
 _agent = create_agent()
@@ -52,7 +62,9 @@ def chat_with_bot():
             if use_rag and rag:
                 # Pre-load vector store so the agent can query documents
                 pass
-            answer = _agent.invoke({"input": query})["output"]
+            language = LanguageHandler.choose_or_detect(query)
+            answer = _agent.invoke({"input": query, "language": language})["output"]
+            answer = LanguageHandler.ensure_language(answer, language)
             print(f"AI: {answer}")
             chat_history.append((query, answer))
 
@@ -176,4 +188,8 @@ def main_menu():
             print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
-    main_menu()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
+        main_menu()
+    else:
+        launch_gradio()
