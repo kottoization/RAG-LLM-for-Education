@@ -36,7 +36,7 @@ def respond(message: str, history: list[tuple[str, str]]) -> tuple[list[tuple[st
 def build_interface() -> gr.Blocks:
     with gr.Blocks(css=CSS, theme=gr.themes.Soft()) as demo:
         gr.Markdown("# EduGen Chat", elem_id="title")
-        chatbot = gr.Chatbot(elem_id="chatbot")
+        chatbot = gr.Chatbot(elem_id="chatbot", type="messages")
         with gr.Row():
             msg = gr.Textbox(placeholder="Type your message and press enter...", container=False)
             send = gr.Button("Send", variant="primary")
