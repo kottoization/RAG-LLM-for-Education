@@ -62,7 +62,9 @@ def chat_with_bot():
             if use_rag and rag:
                 # Pre-load vector store so the agent can query documents
                 pass
-            answer = _agent.invoke({"input": query})["output"]
+            language = LanguageHandler.choose_or_detect(query)
+            answer = _agent.invoke({"input": query, "language": language})["output"]
+            answer = LanguageHandler.ensure_language(answer, language)
             print(f"AI: {answer}")
             chat_history.append((query, answer))
 

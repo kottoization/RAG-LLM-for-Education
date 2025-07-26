@@ -50,9 +50,11 @@ CSS = """
 
 
 def respond(message: str, history: list[tuple[str, str]]) -> tuple[list[tuple[str, str]], str]:
+    language = LanguageHandler.choose_or_detect(message)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        result = agent.invoke({"input": message})["output"]
+        result = agent.invoke({"input": message, "language": language})["output"]
+        result = LanguageHandler.ensure_language(result, language)
     history = history + [(message, result)]
     logs = buffer.getvalue()
     return history, logs
