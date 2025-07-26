@@ -2,7 +2,10 @@ import io
 import os
 import sys
 from contextlib import redirect_stdout
+import warnings
 
+from dotenv import load_dotenv
+from langchain_core._api import LangChainDeprecationWarning
 import gradio as gr
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -13,6 +16,21 @@ from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
+
+dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(dotenv_path)
+
+warnings.filterwarnings(
+    "ignore",
+    message="fields may not start with an underscore",
+    category=RuntimeWarning,
+)
+warnings.filterwarnings("ignore", category=LangChainDeprecationWarning)
+
+if not os.environ.get("OPENAI_API_KEY"):
+    raise RuntimeError(
+        "OPENAI_API_KEY is not set. Create a .env file or export the variable."
+    )
 
 agent = create_agent()
 
