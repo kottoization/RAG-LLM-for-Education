@@ -1,4 +1,13 @@
+"""CLI and Gradio entry point for EduGen."""
+
+import os
 from dotenv import load_dotenv
+
+# Load environment variables from .env before importing modules that require
+# them (e.g. OpenAI API key for ChatOpenAI).
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path)
+
 from QuizModule import generate_quiz, generate_learning_plan_from_quiz
 from LearningPlanModule import LearningPlan
 from SummaryModule import StudySummaryGenerator
@@ -9,13 +18,8 @@ from frontend_service import launch_gradio
 from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 from RAGModule import RAGHandler
-import os
 import warnings
 from langchain_core._api import LangChainDeprecationWarning
-
-# Load environment variables from .env
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-load_dotenv(dotenv_path)
 
 warnings.filterwarnings(
     "ignore",
