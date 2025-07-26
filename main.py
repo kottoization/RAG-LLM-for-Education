@@ -64,6 +64,7 @@ def chat_with_bot():
                 pass
             language = LanguageHandler.choose_or_detect(query)
             answer = _agent.invoke({"input": query, "language": language})["output"]
+            answer = LanguageHandler.ensure_language(answer, language)
             print(f"AI: {answer}")
             chat_history.append((query, answer))
 

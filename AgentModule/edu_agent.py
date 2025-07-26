@@ -28,7 +28,8 @@ Observation: the result of the action
 Thought: I now know the final answer
 Final Answer: the final answer to the original question
 
-Always respond in {language}.
+Always respond in {language}. If any tool returns text in a different language,
+translate it to {language} before giving the final answer.
 
 {agent_scratchpad}"""
 )
@@ -55,4 +56,6 @@ def run_agent(question: str) -> str:
     from tools.language_handler import LanguageHandler
     lang = LanguageHandler.choose_or_detect(question)
     result = executor.invoke({"input": question, "language": lang})
-    return result["output"]
+    output = result["output"]
+    output = LanguageHandler.ensure_language(output, lang)
+    return output

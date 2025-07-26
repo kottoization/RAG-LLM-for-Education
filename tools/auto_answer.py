@@ -17,6 +17,7 @@ def auto_answer(text: str, agent: Optional[AgentExecutor] = None) -> bool:
         agent = agent or create_agent()
         language = LanguageHandler.choose_or_detect(text)
         answer = agent.invoke({"input": text, "language": language})["output"]
+        answer = LanguageHandler.ensure_language(answer, language)
         print(f"\n\U0001F916 Agent Answer:\n{answer}\n")
         return True
     return False

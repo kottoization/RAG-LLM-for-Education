@@ -54,6 +54,7 @@ def respond(message: str, history: list[tuple[str, str]]) -> tuple[list[tuple[st
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         result = agent.invoke({"input": message, "language": language})["output"]
+        result = LanguageHandler.ensure_language(result, language)
     history = history + [(message, result)]
     logs = buffer.getvalue()
     return history, logs

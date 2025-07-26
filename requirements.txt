@@ -33,6 +33,7 @@ python-magic-bin>=0.4.14; platform_system == "Windows"
 # Extra tools
 wikipedia
 nltk
+deep-translator
 
 fastapi>=0.111
 starlette>=0.32
