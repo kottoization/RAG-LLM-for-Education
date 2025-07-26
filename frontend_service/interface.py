@@ -59,7 +59,13 @@ def respond(message: str, history: list[tuple[str, str]]) -> tuple[list[tuple[st
 
 
 def _format_question(q: dict) -> str:
-    return f"**{q['topic']}**\n\n{q['question']}"
+    """Return formatted question text with options on separate lines."""
+    import re
+
+    text = q["question"]
+    if "\n" not in text:
+        text = re.sub(r"\s*([abcd]\))", r"\n\1", text)
+    return f"**{q['topic']}**\n\n{text}"
 
 
 def start_quiz(subject: str, use_rag: bool) -> tuple[str, dict, str]:
