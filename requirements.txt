@@ -34,4 +34,6 @@ python-magic-bin>=0.4.14; platform_system == "Windows"
 wikipedia
 nltk
 
-gradio==4.24.0
+fastapi>=0.111
+starlette>=0.32
+gradio>=4.44.1
