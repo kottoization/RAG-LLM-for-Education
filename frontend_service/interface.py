@@ -10,7 +10,7 @@ import gradio as gr
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from AgentModule import create_agent
-from QuizModule import generate_quiz, generate_learning_plan_from_quiz
+from QuizModule import generate_quiz, generate_learning_plan_from_quiz, prepare_quiz_questions
 from LearningPlanModule import LearningPlan
 from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
@@ -58,23 +58,65 @@ def respond(message: str, history: list[tuple[str, str]]) -> tuple[list[tuple[st
     return history, logs
 
 
-def run_quiz_interface(subject: str, use_rag: bool) -> str:
-    """Run the CLI quiz generation with auto answers."""
+def _format_question(q: dict) -> str:
+    return f"**{q['topic']}**\n\n{q['question']}"
+
+
+def start_quiz(subject: str, use_rag: bool) -> tuple[str, dict, str]:
+    """Generate quiz questions and return the first one with state."""
     language = LanguageHandler.choose_or_detect(subject)
-    buffer = io.StringIO()
-    import builtins
+    questions = prepare_quiz_questions(subject, language=language, use_rag=use_rag)
+    if not questions:
+        return "Failed to generate quiz.", {}, ""
+    state = {
+        "questions": questions,
+        "index": 0,
+        "scores": {},
+        "correct_total": 0,
+    }
+    first_q = _format_question(questions[0])
+    return first_q, state, ""
 
-    def _fake_input(prompt: str = ""):
-        return "a"
 
-    with redirect_stdout(buffer):
-        original_input = builtins.input
-        builtins.input = _fake_input
-        try:
-            generate_quiz(subject, language=language, use_rag=use_rag)
-        finally:
-            builtins.input = original_input
-    return buffer.getvalue()
+def answer_quiz(choice: str, state: dict) -> tuple[str, dict, str]:
+    """Process an answer button click and return next question or results."""
+    if not state or state.get("index") is None:
+        return "Quiz not started.", state, ""
+
+    idx = state["index"]
+    questions = state["questions"]
+    if idx >= len(questions):
+        return "", state, _compile_results(state)
+
+    current = questions[idx]
+    topic = current["topic"]
+    correct = current["correct"]
+    scores = state.setdefault("scores", {}).setdefault(topic, [0, 0])
+    scores[1] += 1
+    if choice.lower() == correct or correct == "?":
+        scores[0] += 1
+        state["correct_total"] += 1
+
+    state["index"] += 1
+    if state["index"] >= len(questions):
+        return "", state, _compile_results(state)
+    next_q = _format_question(questions[state["index"]])
+    return next_q, state, ""
+
+
+def _compile_results(state: dict) -> str:
+    lines = []
+    total_questions = 0
+    total_correct = state.get("correct_total", 0)
+    for topic, (corr, tot) in state.get("scores", {}).items():
+        perc = (corr / tot) * 100 if tot else 0
+        lines.append(f"{topic}: {corr}/{tot} ({perc:.2f}%)")
+        total_questions += tot
+    if lines:
+        overall = sum((corr / tot) * 100 if tot else 0 for corr, tot in state["scores"].values())
+        overall /= len(state["scores"])
+        lines.append(f"\nOverall Score: {total_correct}/{total_questions} ({overall:.2f}%)")
+    return "\n".join(lines)
 
 
 def run_learning_plan_interface(name: str, goals: str) -> str:
@@ -163,9 +205,21 @@ def build_interface() -> gr.Blocks:
             with gr.TabItem("Generate quiz"):
                 quiz_subject = gr.Textbox(label="Subject")
                 quiz_rag = gr.Checkbox(label="Use RAG", value=False)
-                quiz_btn = gr.Button("Start Quiz")
-                quiz_output = gr.Textbox(label="Quiz Output", lines=10)
-                quiz_btn.click(run_quiz_interface, [quiz_subject, quiz_rag], quiz_output)
+                start_btn = gr.Button("Start Quiz")
+                quiz_question = gr.Markdown()
+                with gr.Row():
+                    btn_a = gr.Button("A")
+                    btn_b = gr.Button("B")
+                    btn_c = gr.Button("C")
+                    btn_d = gr.Button("D")
+                quiz_result = gr.Markdown()
+                quiz_state = gr.State()
+
+                start_btn.click(start_quiz, [quiz_subject, quiz_rag], [quiz_question, quiz_state, quiz_result])
+                btn_a.click(lambda st: answer_quiz("a", st), quiz_state, [quiz_question, quiz_state, quiz_result])
+                btn_b.click(lambda st: answer_quiz("b", st), quiz_state, [quiz_question, quiz_state, quiz_result])
+                btn_c.click(lambda st: answer_quiz("c", st), quiz_state, [quiz_question, quiz_state, quiz_result])
+                btn_d.click(lambda st: answer_quiz("d", st), quiz_state, [quiz_question, quiz_state, quiz_result])
 
             # Learning plan tab
             with gr.TabItem("Learning plan"):

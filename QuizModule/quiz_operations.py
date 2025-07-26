@@ -11,129 +11,125 @@ from tools.language_handler import LanguageHandler
 from RAGModule.rag import RAGHandler
 from tools.auto_answer import auto_answer
 
-def generate_quiz(subject: str, language: str = "en", use_rag: bool = False, retriever=None):
-    """
-    Generates a quiz based on the provided subject using parallel chains.
-    If ``use_rag`` is True, optional ``retriever`` supplies context; otherwise a
-    new :class:`RAGHandler` is created.
-    """
-    try:
-        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
-        # Optional RAG context fetch
-        context = ""
-        if use_rag:
-            if retriever:
-                docs = retriever.get_relevant_documents(subject)
-            else:
-                rag = RAGHandler()
-                rag.load_vectorstore()
-                docs = rag.semantic_search(subject, k=3)
-            context = "\n\n".join([doc.page_content for doc in docs])
-            print(f"[RAG] Retrieved {len(docs)} documents for context.")
+def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = False, retriever=None) -> list[dict]:
+    """Return a list of quiz questions without running an interactive loop."""
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
-        # Prepare input for topic prompt (include context if available)
-        prompt_subject = subject
-        if context:
-            prompt_subject = f"{subject}\n\nContext:\n{context}"
-
-        # Generate topics
-        print(f"Generating topics for subject: {subject}")
-        topic_prompt = generate_topic_list_prompt(prompt_subject, language)
-        try:
-            topic_result = llm.invoke(
-                topic_prompt.format_prompt(subject=prompt_subject)
-            )
-            topics = topic_result.content.split("\n")
-            print(f"Generated topics: {topics}")
-        except Exception as e:
-            raise ValueError(f"Error generating topics: {e}")
-
-        topics = [t.strip() for t in topics if t.strip()]
-
-        if not topics:
-            print("\u26a0\ufe0f No topics generated. Please try a different subject.")
-            return {}
-
-        max_questions = 20
-        max_topics = min(len(topics), 5)
-        topics = topics[:max_topics]
-
-        if max_topics == 0:
-            print("No quiz topics generated.")
-            return {}
-
-        questions_per_topic = max_questions // max_topics
-
-        # Generate questions in parallel
-        print("Generating questions for all topics...")
-        if use_rag:
-            if retriever:
-                context_chain = RunnableLambda(lambda inputs: "\n\n".join([doc.page_content for doc in retriever.get_relevant_documents(inputs["topic"])]))
-            else:
-                rag = RAGHandler()
-                rag.load_vectorstore()
-                context_chain = RunnableLambda(lambda inputs: rag.get_context(inputs["topic"], k=3))
-            prompt_chain = RunnableLambda(
-                lambda inputs: generate_questions_prompt(inputs["topic"], language=language)
-                    .format_prompt(topic=inputs["topic"])
-            )
-
-            question_chain = RunnableParallel({"ctx": context_chain, "prompt": prompt_chain}) \
-                | RunnableLambda(lambda d: d["ctx"] + "\n\n" + d["prompt"]) \
-                | llm
+    context = ""
+    if use_rag:
+        if retriever:
+            docs = retriever.get_relevant_documents(subject)
         else:
-            question_chain = RunnableLambda(
-                lambda inputs: generate_questions_prompt(inputs["topic"], language=language)
-                    .format_prompt(topic=inputs["topic"])
-            ) | llm
+            rag = RAGHandler()
+            rag.load_vectorstore()
+            docs = rag.semantic_search(subject, k=3)
+        context = "\n\n".join([doc.page_content for doc in docs])
 
-        questions = question_chain.batch([{"topic": topic} for topic in topics])
+    prompt_subject = subject
+    if context:
+        prompt_subject = f"{subject}\n\nContext:\n{context}"
 
-        # Quiz CLI
+    # Generate topics
+    topic_prompt = generate_topic_list_prompt(prompt_subject, language)
+    topic_result = llm.invoke(topic_prompt.format_prompt(subject=prompt_subject))
+    topics = [t.strip() for t in topic_result.content.split("\n") if t.strip()]
+    if not topics:
+        return []
+
+    max_questions = 20
+    max_topics = min(len(topics), 5)
+    topics = topics[:max_topics]
+    if max_topics == 0:
+        return []
+
+    questions_per_topic = max_questions // max_topics
+
+    # Generate questions in parallel
+    if use_rag:
+        if retriever:
+            context_chain = RunnableLambda(
+                lambda inputs: "\n\n".join(
+                    [doc.page_content for doc in retriever.get_relevant_documents(inputs["topic"])]
+                )
+            )
+        else:
+            rag = RAGHandler()
+            rag.load_vectorstore()
+            context_chain = RunnableLambda(lambda inputs: rag.get_context(inputs["topic"], k=3))
+        prompt_chain = RunnableLambda(
+            lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
+        )
+        question_chain = (
+            RunnableParallel({"ctx": context_chain, "prompt": prompt_chain})
+            | RunnableLambda(lambda d: d["ctx"] + "\n\n" + d["prompt"])
+            | llm
+        )
+    else:
+        question_chain = RunnableLambda(
+            lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
+        ) | llm
+
+    question_sets = question_chain.batch([{"topic": t} for t in topics])
+
+    questions_list = []
+    for topic, qset in zip(topics, question_sets):
+        q_texts = qset.content.split("\n\n")[:questions_per_topic]
+        for q in q_texts:
+            raw_correct = q.split("Correct Answer: ")[-1].strip().lower()
+            correct = raw_correct[0] if raw_correct and raw_correct[0] in ["a", "b", "c", "d"] else "?"
+            text = q.rsplit("Correct Answer", 1)[0].strip()
+            questions_list.append({"topic": topic, "question": text, "correct": correct})
+
+    return questions_list
+
+def generate_quiz(subject: str, language: str = "en", use_rag: bool = False, retriever=None):
+    """Run an interactive quiz in the terminal and return the results."""
+    try:
+        questions = prepare_quiz_questions(subject, language=language, use_rag=use_rag, retriever=retriever)
+        if not questions:
+            print("\u26a0\ufe0f No quiz topics generated.")
+            return {}
+
         print("\nStarting the quiz...\n")
         user_scores = {}
         total_questions = 0
         total_correct = 0
 
-        for topic, question_set in zip(topics, questions):
-            print(f"Topic: {topic}\n")
-            question_texts = question_set.content.split("\n\n")[:questions_per_topic]
-            correct_answers = 0
-            total_topic_questions = len(question_texts)
+        for q in questions:
+            topic = q["topic"]
+            question = q["question"]
+            correct = q["correct"]
+            if topic not in user_scores:
+                user_scores[topic] = [0, 0]
+                print(f"Topic: {topic}\n")
 
-            for question in question_texts:
-                try:
-                    print(question)
-                    while True:
-                        user_answer = input("Your answer: ")
-                        if not auto_answer(user_answer):
-                            break
-                    user_answer = user_answer.strip().lower()
-                    raw_correct = question.split("Correct Answer: ")[-1].strip().lower()
-                    correct_answer = raw_correct[0] if raw_correct and raw_correct[0] in ['a','b','c','d'] else "?"
-                    if user_answer == correct_answer:
-                        print("Correct!\n")
-                        correct_answers += 1
-                    elif correct_answer == "?":
-                        # when missing correct key, count as correct temporarily
-                        correct_answers += 1
-                    else:
-                        print(f"Wrong! The correct answer is: {correct_answer}\n")
-                except Exception as e:
-                    print(f"Error parsing question or answer: {e}")
+            try:
+                print(question)
+                while True:
+                    user_answer = input("Your answer: ")
+                    if not auto_answer(user_answer):
+                        break
+                user_answer = user_answer.strip().lower()
+                if user_answer == correct:
+                    print("Correct!\n")
+                    user_scores[topic][0] += 1
+                elif correct == "?":
+                    user_scores[topic][0] += 1
+                else:
+                    print(f"Wrong! The correct answer is: {correct}\n")
+                user_scores[topic][1] += 1
+                total_correct += 1 if user_answer == correct or correct == "?" else 0
+                total_questions += 1
+            except Exception as e:
+                print(f"Error parsing question or answer: {e}")
 
-            user_scores[topic] = (correct_answers, total_topic_questions)
-            total_correct += correct_answers
-            total_questions += total_topic_questions
-
-        # Display results
         print("\nFinal Results:")
         overall_percentage = 0
-        for topic, (correct, total) in user_scores.items():
-            percentage = (correct/total)*100 if total > 0 else 0
+        for topic, (correct_num, total_num) in user_scores.items():
+            percentage = (correct_num / total_num) * 100 if total_num > 0 else 0
             overall_percentage += percentage
-            print(f"Topic: {topic} - Score: {correct}/{total} ({percentage:.2f}%)")
+            print(f"Topic: {topic} - Score: {correct_num}/{total_num} ({percentage:.2f}%)")
         overall_percentage /= len(user_scores) if user_scores else 1
         print(f"\nOverall Score: {total_correct}/{total_questions} ({overall_percentage:.2f}%)")
 
