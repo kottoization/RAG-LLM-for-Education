@@ -124,10 +124,23 @@ class RAGHandler:
         """
         self._init_embeddings()
         if self.vectordb is None:
-            self.vectordb = Chroma(
-                embedding_function=self.embeddings,
-                persist_directory=self.persist_dir
-            )
+            db_path = Path(self.persist_dir) / "chroma.sqlite3"
+
+            # Attempt to load existing DB if it exists
+            if db_path.exists():
+                self.vectordb = Chroma(
+                    embedding_function=self.embeddings,
+                    persist_directory=self.persist_dir,
+                )
+
+                try:
+                    # If no embeddings are stored, rebuild
+                    if self.vectordb._collection.count() == 0:
+                        self.vectordb = self.build_vectorstore()
+                except Exception:
+                    self.vectordb = self.build_vectorstore()
+            else:
+                self.vectordb = self.build_vectorstore()
         return self.vectordb
 
     def semantic_search(self, query: str, k: int = 3) -> List[Document]:
