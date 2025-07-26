@@ -63,8 +63,9 @@ def _format_question(q: dict) -> str:
     import re
 
     text = q["question"]
-    if "\n" not in text:
-        text = re.sub(r"\s*([abcd]\))", r"\n\1", text)
+    # ensure each answer choice appears on its own line
+    text = re.sub(r"\s*([abcd]\))", r"\n\1", text, flags=re.I)
+    text = text.strip()
     return f"**{q['topic']}**\n\n{text}"
 
 
