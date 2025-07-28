@@ -50,7 +50,8 @@ CSS = """
 
 
 def respond(message: str, history: list[tuple[str, str]], lang_choice: str) -> tuple[list[tuple[str, str]], str]:
-    language = lang_choice if lang_choice != "auto" else LanguageHandler.choose_or_detect(message)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(message)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         result = agent.invoke({"input": message, "language": language})["output"]
@@ -73,7 +74,8 @@ def _format_question(q: dict) -> str:
 
 def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict, str]:
     """Generate quiz questions and return the first one with state."""
-    language = lang_choice if lang_choice != "auto" else LanguageHandler.choose_or_detect(subject)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(subject)
     questions = prepare_quiz_questions(subject, language=language, use_rag=use_rag)
     if not questions:
         return "Failed to generate quiz.", {}, ""
@@ -133,7 +135,8 @@ def _compile_results(state: dict) -> str:
 
 def run_learning_plan_interface(name: str, goals: str, lang_choice: str) -> str:
     """Generate a learning plan from custom goals."""
-    language = lang_choice if lang_choice != "auto" else LanguageHandler.choose_or_detect(goals)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(goals)
     plan = LearningPlan(user_name=name, user_language=language)
     goals_list = [g.strip() for g in goals.split(";") if g.strip()]
     user_input = {"goals": goals_list}
@@ -147,7 +150,8 @@ def run_learning_plan_interface(name: str, goals: str, lang_choice: str) -> str:
 
 def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tuple[list[dict], str]:
     """Generate flashcards from a topic."""
-    language = lang_choice if lang_choice != "auto" else LanguageHandler.choose_or_detect(topic)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     flashcards = FlashcardSet(topic)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
@@ -179,14 +183,16 @@ def run_flashcards_review(path: str) -> str:
 
 def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     """Generate a detailed study summary."""
-    language = lang_choice if lang_choice != "auto" else LanguageHandler.choose_or_detect(topic)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
     return summarizer.generate_summary(topic, language=language, use_rag=use_rag)
 
 
 def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     """Generate a cheat sheet."""
-    language = lang_choice if lang_choice != "auto" else LanguageHandler.choose_or_detect(topic)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     generator = CheatSheetGenerator()
     return generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
 
@@ -196,8 +202,8 @@ def build_interface() -> gr.Blocks:
     with gr.Blocks(css=CSS, theme=gr.themes.Soft()) as demo:
         gr.Markdown("# EduGen", elem_id="title")
         lang_select = gr.Dropdown(
-            choices=LanguageHandler.supported_languages(),
-            value="auto",
+            choices=LanguageHandler.dropdown_choices(),
+            value=LanguageHandler.dropdown_choices()[0],
             label="Language"
         )
 

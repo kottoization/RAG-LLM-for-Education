@@ -11,6 +11,32 @@ SUPPORTED_LANGUAGES = [
     "ru", "uk", "nl", "sv", "fi", "no", "da", "tr", "ja", "ko", "zh", "ar", "he"
 ]
 
+LANGUAGE_LABELS = {
+    "auto": "\U0001F310 Auto-detect",
+    "en": "\U0001F1FA\U0001F1F8 English",
+    "pl": "\U0001F1F5\U0001F1F1 Polski",
+    "cs": "\U0001F1E8\U0001F1FF \u010Ce\u0161tina",
+    "sk": "\U0001F1F8\U0001F1F0 Sloven\u010Dina",
+    "de": "\U0001F1E9\U0001F1EA Deutsch",
+    "fr": "\U0001F1EB\U0001F1F7 Fran\u00E7ais",
+    "es": "\U0001F1EA\U0001F1F8 Espa\u00F1ol",
+    "it": "\U0001F1EE\U0001F1F9 Italiano",
+    "pt": "\U0001F1F5\U0001F1F9 Portugu\u00EAs",
+    "ru": "\U0001F1F7\U0001F1FA \u0420\u0443\u0441\u0441\u043A\u0438\u0439",
+    "uk": "\U0001F1FA\U0001F1E6 \u0423\u043A\u0440\u0430\u0457\u043D\u0441\u044C\u043A\u0430",
+    "nl": "\U0001F1F3\U0001F1F1 Nederlands",
+    "sv": "\U0001F1F8\U0001F1EA Svenska",
+    "fi": "\U0001F1EB\U0001F1EE Suomi",
+    "no": "\U0001F1F3\U0001F1F4 Norsk",
+    "da": "\U0001F1E9\U0001F1F0 Dansk",
+    "tr": "\U0001F1F9\U0001F1F7 T\u00FCrk\u00E7e",
+    "ja": "\U0001F1EF\U0001F1F5 \u65E5\u672C\u8A9E",
+    "ko": "\U0001F1F0\U0001F1F7 \uD55C\uAD6D\uC5B4",
+    "zh": "\U0001F1E8\U0001F1F3 \u4E2D\u6587",
+    "ar": "\U0001F1F8\U0001F1E6 \u0627\u0644\u0639\u0631\u0628\u064A\u0629",
+    "he": "\U0001F1EE\U0001F1F1 \u05E2\u05D1\u05E8\u05D9\u05EA",
+}
+
 
 class LanguageHandler:
     @staticmethod
@@ -70,3 +96,15 @@ class LanguageHandler:
     @staticmethod
     def supported_languages() -> list[str]:
         return SUPPORTED_LANGUAGES
+
+    @staticmethod
+    def dropdown_choices() -> list[str]:
+        """Return display strings for the language dropdown."""
+        return [LANGUAGE_LABELS[code] for code in SUPPORTED_LANGUAGES]
+
+    @staticmethod
+    def code_from_display(display: str) -> str:
+        for code, label in LANGUAGE_LABELS.items():
+            if label == display:
+                return code
+        return "auto"
