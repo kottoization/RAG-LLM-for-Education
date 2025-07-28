@@ -7,6 +7,7 @@ from tools.quiz_prompts import generate_topic_list_prompt, generate_questions_pr
 from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
+from FlashcardsModule import FlashcardSet
 from tools.language_handler import LanguageHandler
 from RAGModule.rag import RAGHandler
 from tools.auto_answer import auto_answer
@@ -147,3 +148,15 @@ def generate_learning_plan_from_quiz(user_name, quiz_results, language="en"):
     learning_plan = plan.generate_plan()
     plan.display_plan()
     return learning_plan
+
+
+def generate_flashcards_from_quiz(subject: str, questions: list[dict]) -> FlashcardSet:
+    """Create a FlashcardSet from quiz questions."""
+    flashcards = FlashcardSet(subject)
+    blocks = []
+    for q in questions:
+        block = q["question"].strip() + f"\nCorrect Answer: {q['correct']}"
+        blocks.append(block)
+    raw_text = "\n\n".join(blocks)
+    flashcards.generate_from_quiz_text(raw_text)
+    return flashcards
