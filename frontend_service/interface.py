@@ -59,7 +59,7 @@ def respond(
     """
 
     # show the user's message right away with a placeholder for the response
-    history = history + [(message, None)]
+    history = history + [(message, "...")]
     yield history, ""
 
     code = LanguageHandler.code_from_display(lang_choice)
