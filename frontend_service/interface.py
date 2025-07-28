@@ -166,10 +166,14 @@ def run_learning_plan_from_quiz(name: str, state: dict) -> str:
     return buffer.getvalue()
 
 def run_flashcards_from_quiz(state: dict) -> tuple[list[dict], str]:
-    """Generate flashcards from the quiz questions."""
+    """Generate flashcards from completed quiz questions."""
     if not state or not state.get("questions"):
         return [], "No quiz data available."
-    flashcards = generate_flashcards_from_quiz(state.get("subject", "Quiz"), state["questions"])
+    flashcards = generate_flashcards_from_quiz(
+        state.get("subject", "Quiz"),
+        state["questions"],
+        state.get("scores"),
+    )
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         flashcards.save_to_file()

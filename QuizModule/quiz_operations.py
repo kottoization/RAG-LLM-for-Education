@@ -150,13 +150,36 @@ def generate_learning_plan_from_quiz(user_name, quiz_results, language="en"):
     return learning_plan
 
 
-def generate_flashcards_from_quiz(subject: str, questions: list[dict]) -> FlashcardSet:
-    """Create a FlashcardSet from quiz questions."""
+def generate_flashcards_from_quiz(
+    subject: str,
+    questions: list[dict],
+    scores: dict | None = None,
+) -> FlashcardSet:
+    """Create a ``FlashcardSet`` from quiz questions.
+
+    If ``scores`` are provided, questions from lower scoring topics are
+    prioritized so the resulting flashcards focus on weaker areas.
+    """
     flashcards = FlashcardSet(subject)
+
+    if scores:
+        ordered_topics = sorted(
+            scores,
+            key=lambda t: (scores[t][0] / scores[t][1]) if scores[t][1] else 0,
+        )
+        ordered_questions = [
+            q for topic in ordered_topics for q in questions if q["topic"] == topic
+        ]
+    else:
+        ordered_questions = questions
+
     blocks = []
-    for q in questions:
-        block = q["question"].strip() + f"\nCorrect Answer: {q['correct']}"
+    for q in ordered_questions:
+        block = q["question"].strip()
+        if "Correct Answer" not in block:
+            block += f"\nCorrect Answer: {q['correct']}"
         blocks.append(block)
+
     raw_text = "\n\n".join(blocks)
     flashcards.generate_from_quiz_text(raw_text)
     return flashcards

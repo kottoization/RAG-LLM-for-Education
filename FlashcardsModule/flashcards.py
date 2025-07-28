@@ -40,20 +40,25 @@ class FlashcardSet:
         self.flashcards.append(flashcard)
 
     def generate_from_quiz_text(self, raw_text: str):
-        """
-        Parses quiz-style text and extracts flashcards from question blocks.
-        """
+        """Parse quiz-style text and extract flashcards from question blocks."""
         blocks = raw_text.strip().split("\n\n")
         for block in blocks:
             try:
-                question_match = re.search(r"Question:\s*(.*)", block)
-                correct_match = re.search(r"Correct Answer:\s*([a-d])", block)
+                lines = block.strip().splitlines()
+                if not lines:
+                    continue
+                # first line contains the question, potentially prefixed with
+                # "Question:" or a numbering scheme like "1." or "1)"
+                first_line = lines[0]
+                first_line = re.sub(r"^(?:Question[:\s]*|\d+[.)]\s*)", "", first_line).strip()
+                question = first_line
+                correct_match = re.search(r"Correct Answer:\s*([a-d])", block, re.I)
                 options = re.findall(r"[a-d]\)\s*(.*)", block)
 
-                if question_match and correct_match and options:
-                    idx = ord(correct_match.group(1).lower()) - ord('a')
-                    answer = options[idx]
-                    self.add_flashcard(Flashcard(question=question_match.group(1), answer=answer))
+                if question and correct_match and options:
+                    idx = ord(correct_match.group(1).lower()) - ord("a")
+                    answer = options[idx] if idx < len(options) else options[0]
+                    self.add_flashcard(Flashcard(question=question, answer=answer))
             except Exception as e:
                 print(f"⚠️ Error parsing block: {e}")
 
