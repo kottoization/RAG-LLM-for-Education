@@ -78,6 +78,8 @@ def start_quiz(subject: str, use_rag: bool) -> tuple[str, dict, str]:
     if not questions:
         return "Failed to generate quiz.", {}, ""
     state = {
+        "subject": subject,
+        "language": language,
         "questions": questions,
         "index": 0,
         "scores": {},
@@ -139,6 +141,17 @@ def run_learning_plan_interface(name: str, goals: str) -> str:
         plan.generate_plan_from_prompt(user_input)
         plan.display_plan()
         plan.save_to_file()
+    return buffer.getvalue()
+
+
+def run_learning_plan_from_quiz(name: str, state: dict) -> str:
+    """Generate a learning plan based on completed quiz results."""
+    if not state or not state.get("scores"):
+        return "No quiz results available."
+    language = state.get("language") or LanguageHandler.choose_or_detect(name)
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        generate_learning_plan_from_quiz(name, state["scores"], language)
     return buffer.getvalue()
 
 
@@ -222,6 +235,9 @@ def build_interface() -> gr.Blocks:
                     btn_c = gr.Button("C")
                     btn_d = gr.Button("D")
                 quiz_result = gr.Markdown()
+                quiz_name = gr.Textbox(label="Your name")
+                plan_quiz_btn = gr.Button("Generate Learning Plan from Quiz")
+                plan_quiz_output = gr.Textbox(label="Plan Output", lines=10)
                 quiz_state = gr.State()
 
                 start_btn.click(start_quiz, [quiz_subject, quiz_rag], [quiz_question, quiz_state, quiz_result])
@@ -229,6 +245,7 @@ def build_interface() -> gr.Blocks:
                 btn_b.click(lambda st: answer_quiz("b", st), quiz_state, [quiz_question, quiz_state, quiz_result])
                 btn_c.click(lambda st: answer_quiz("c", st), quiz_state, [quiz_question, quiz_state, quiz_result])
                 btn_d.click(lambda st: answer_quiz("d", st), quiz_state, [quiz_question, quiz_state, quiz_result])
+                plan_quiz_btn.click(run_learning_plan_from_quiz, [quiz_name, quiz_state], plan_quiz_output)
 
             # Learning plan tab
             with gr.TabItem("Learning plan"):
