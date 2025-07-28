@@ -49,16 +49,31 @@ CSS = """
 """
 
 
-def respond(message: str, history: list[tuple[str, str]], lang_choice: str) -> tuple[list[tuple[str, str]], str]:
+def respond(
+    message: str, history: list[tuple[str, str]], lang_choice: str
+) -> tuple[list[tuple[str, str]], str]:
+    """Return updated chat history and logs.
+
+    The user's message is yielded immediately so it appears in the UI while the
+    bot processes the response.
+    """
+
+    # show the user's message right away with a placeholder for the response
+    history = history + [(message, None)]
+    yield history, ""
+
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(message)
+
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         result = agent.invoke({"input": message, "language": language})["output"]
         result = LanguageHandler.ensure_language(result, language)
-    history = history + [(message, result)]
+
+    # replace the placeholder with the actual response
+    history[-1] = (message, result)
     logs = buffer.getvalue()
-    return history, logs
+    yield history, logs
 
 
 def _format_question(q: dict) -> str:
