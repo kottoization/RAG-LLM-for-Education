@@ -47,6 +47,28 @@ CSS = """
   background-color: #f0f0f0;
   border-radius: 8px;
 }
+#flashcard-container {
+  background-color: #fffbe6;
+  border: 1px solid #ffd580;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 500px;
+  margin: auto;
+  text-align: center;
+}
+#flashcard-content {
+  min-height: 120px;
+  font-size: 1.1em;
+  margin-bottom: 8px;
+}
+#flashcard-buttons button {
+  width: 48px;
+  margin: 0 4px;
+}
+#flashcard-counter {
+  font-weight: bold;
+  margin-top: 8px;
+}
 """
 
 
@@ -322,13 +344,14 @@ def build_interface() -> gr.Blocks:
                     fc_topic = gr.Textbox(label="Topic")
                     fc_rag = gr.Checkbox(label="Use RAG", value=False)
                     fc_gen_btn = gr.Button("Generate")
-                    fc_card = gr.Markdown()
-                    with gr.Row():
-                        fc_prev = gr.Button("Prev")
-                        fc_flip = gr.Button("Flip")
-                        fc_next = gr.Button("Next")
-                        fc_shuffle = gr.Button("Shuffle")
-                    fc_counter = gr.Textbox(label="Card", value="0/0")
+                    with gr.Column(elem_id="flashcard-container"):
+                        fc_card = gr.Markdown(elem_id="flashcard-content")
+                        with gr.Row(elem_id="flashcard-buttons"):
+                            fc_prev = gr.Button("⬅️", size="sm", scale=0)
+                            fc_flip = gr.Button("🔄", size="sm", scale=0)
+                            fc_next = gr.Button("➡️", size="sm", scale=0)
+                            fc_shuffle = gr.Button("🔀", size="sm", scale=0)
+                        fc_counter = gr.Markdown("0/0", elem_id="flashcard-counter")
                     fc_logs = gr.Textbox(label="Logs", lines=4)
                     fc_state = gr.State()
 

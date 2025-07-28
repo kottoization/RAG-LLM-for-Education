@@ -126,7 +126,11 @@ class FlashcardSet:
                 })
                 raw_output = response.content
 
-            pairs = re.findall(r"Q:\s*(.+?)\nA:\s*(.+?)(?=\nQ:|\Z)", raw_output, re.DOTALL)
+            pairs = re.findall(
+                r"(?:\d+\.\s*)?Q:\s*(.+?)\nA:\s*(.+?)(?=\n(?:\d+\.\s*)?Q:|\Z)",
+                raw_output,
+                re.DOTALL,
+            )
 
             for q, a in pairs:
                 self.add_flashcard(Flashcard(q.strip(), a.strip()))
