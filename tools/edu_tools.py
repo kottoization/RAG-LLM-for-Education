@@ -78,6 +78,12 @@ def current_date(_: str = "") -> str:
 
 
 @tool
+def current_weekday(_: str = "") -> str:
+    """Return the current day of the week."""
+    return datetime.utcnow().strftime("%A")
+
+
+@tool
 def detect_language(text: str) -> str:
     """Detect the language of a given text sample."""
     from tools.language_handler import LanguageHandler
