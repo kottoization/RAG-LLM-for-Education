@@ -1,19 +1,29 @@
 import os
 import json
 from langdetect import detect
+import langid
 from deep_translator import GoogleTranslator
 
 CONFIG_PATH = os.path.join("data", "user_config.json")
+
+SUPPORTED_LANGUAGES = [
+    "auto", "en", "pl", "cs", "sk", "de", "fr", "es", "it", "pt",
+    "ru", "uk", "nl", "sv", "fi", "no", "da", "tr", "ja", "ko", "zh", "ar", "he"
+]
 
 
 class LanguageHandler:
     @staticmethod
     def detect_language(text: str) -> str:
         try:
-            lang = detect(text)
-            return lang
-        except:
-            return "en"
+            langid.set_languages([l for l in SUPPORTED_LANGUAGES if l != "auto"])
+            lang, _ = langid.classify(text)
+        except Exception:
+            try:
+                lang = detect(text)
+            except Exception:
+                lang = "en"
+        return lang
 
     @staticmethod
     def set_language(lang_code: str):
@@ -56,3 +66,7 @@ class LanguageHandler:
         if detected != language:
             return LanguageHandler.translate(text, language)
         return text
+
+    @staticmethod
+    def supported_languages() -> list[str]:
+        return SUPPORTED_LANGUAGES
