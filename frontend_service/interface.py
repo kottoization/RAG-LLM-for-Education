@@ -80,6 +80,8 @@ def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict
     if not questions:
         return "Failed to generate quiz.", {}, ""
     state = {
+        "subject": subject,
+        "language": language,
         "questions": questions,
         "index": 0,
         "scores": {},
@@ -148,6 +150,16 @@ def run_learning_plan_interface(name: str, goals: str, lang_choice: str) -> str:
     return buffer.getvalue()
 
 
+def run_learning_plan_from_quiz(name: str, state: dict) -> str:
+    """Generate a learning plan based on completed quiz results."""
+    if not state or not state.get("scores"):
+        return "No quiz results available."
+    language = state.get("language") or LanguageHandler.choose_or_detect(name)
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        generate_learning_plan_from_quiz(name, state["scores"], language)
+    return buffer.getvalue()
+
 def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tuple[list[dict], str]:
     """Generate flashcards from a topic."""
     code = LanguageHandler.code_from_display(lang_choice)
@@ -158,7 +170,6 @@ def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tupl
         flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag)
         flashcards.save_to_file()
     return flashcards.to_dict_list(), buffer.getvalue()
-
 
 def run_flashcards_review(path: str) -> str:
     """Review flashcards from a saved file (auto answer)."""
@@ -236,6 +247,9 @@ def build_interface() -> gr.Blocks:
                     btn_c = gr.Button("C")
                     btn_d = gr.Button("D")
                 quiz_result = gr.Markdown()
+                quiz_name = gr.Textbox(label="Your name")
+                plan_quiz_btn = gr.Button("Generate Learning Plan from Quiz")
+                plan_quiz_output = gr.Textbox(label="Plan Output", lines=10)
                 quiz_state = gr.State()
 
                 start_btn.click(start_quiz, [quiz_subject, quiz_rag, lang_select], [quiz_question, quiz_state, quiz_result])
@@ -243,6 +257,7 @@ def build_interface() -> gr.Blocks:
                 btn_b.click(lambda st: answer_quiz("b", st), quiz_state, [quiz_question, quiz_state, quiz_result])
                 btn_c.click(lambda st: answer_quiz("c", st), quiz_state, [quiz_question, quiz_state, quiz_result])
                 btn_d.click(lambda st: answer_quiz("d", st), quiz_state, [quiz_question, quiz_state, quiz_result])
+                plan_quiz_btn.click(run_learning_plan_from_quiz, [quiz_name, quiz_state], plan_quiz_output)
 
             # Learning plan tab
             with gr.TabItem("Learning plan"):
