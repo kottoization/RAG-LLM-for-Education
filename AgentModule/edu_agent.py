@@ -8,6 +8,7 @@ from tools.edu_tools import (
     calculator,
     document_search,
     current_date,
+    current_weekday,
     detect_language,
 )
 
@@ -43,6 +44,7 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
         calculator,
         document_search,
         current_date,
+        current_weekday,
         detect_language,
     ]
     llm = ChatOpenAI(model=model_name, temperature=0)
