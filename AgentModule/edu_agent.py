@@ -50,12 +50,33 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
     return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 
-def run_agent(question: str) -> str:
-    """Run the default agent on a question and return the answer."""
-    executor = create_agent()
+def run_agent(question: str, executor: AgentExecutor | None = None) -> str:
+    """Run the default agent on a question and return the answer.
+
+    If the agent cannot provide a useful response (e.g. tool errors), the
+    question is answered directly by the LLM as a fallback.
+    """
+    executor = executor or create_agent()
     from tools.language_handler import LanguageHandler
+
     lang = LanguageHandler.choose_or_detect(question)
-    result = executor.invoke({"input": question, "language": lang})
-    output = result["output"]
+    try:
+        result = executor.invoke({"input": question, "language": lang})
+        output = result["output"]
+    except Exception as e:  # pragma: no cover - agent execution errors
+        output = f"Agent error: {e}"
+
+    def _needs_fallback(text: str) -> bool:
+        markers = ["error", "not found", "couldn't"]
+        text = text.lower()
+        return any(m in text for m in markers)
+
+    if _needs_fallback(output):
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+        try:
+            output = llm.invoke(question)
+        except Exception as e:  # pragma: no cover - API errors
+            output = f"LLM error: {e}"
+
     output = LanguageHandler.ensure_language(output, lang)
     return output
