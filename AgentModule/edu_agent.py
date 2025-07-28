@@ -86,7 +86,8 @@ def run_agent(question: str, executor: AgentExecutor | None = None) -> str:
     if _needs_fallback(output):
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
         try:
-            output = llm.invoke(question)
+            msg = llm.invoke(question)
+            output = getattr(msg, "content", str(msg))
         except Exception as e:  # pragma: no cover - API errors
             output = f"LLM error: {e}"
 
