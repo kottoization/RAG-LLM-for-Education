@@ -67,7 +67,19 @@ def run_agent(question: str, executor: AgentExecutor | None = None) -> str:
         output = f"Agent error: {e}"
 
     def _needs_fallback(text: str) -> bool:
-        markers = ["error", "not found", "couldn't"]
+        markers = [
+            "error",
+            "not found",
+            "couldn't",
+            "could not",
+            "unable to",
+            "sorry",
+            "unfortunately",
+            "niestety",
+            "nie uda",
+            "nie mog",
+            "brak",
+        ]
         text = text.lower()
         return any(m in text for m in markers)
 
