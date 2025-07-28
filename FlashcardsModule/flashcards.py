@@ -159,8 +159,10 @@ class FlashcardSet:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.to_dict_list(), f, indent=4, ensure_ascii=False)
             print(f"💾 Flashcards saved to {path}")
+            return path
         except Exception as e:
             print(f"❌ Failed to save flashcards: {e}")
+            return ""
 
     @staticmethod
     def load_from_file(path: str):

@@ -3,6 +3,7 @@ import os
 import sys
 from contextlib import redirect_stdout
 import warnings
+import random
 
 from dotenv import load_dotenv
 from langchain_core._api import LangChainDeprecationWarning
@@ -160,36 +161,84 @@ def run_learning_plan_from_quiz(name: str, state: dict) -> str:
         generate_learning_plan_from_quiz(name, state["scores"], language)
     return buffer.getvalue()
 
-def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tuple[list[dict], str]:
-    """Generate flashcards from a topic."""
+def _init_flashcard_state(cards: list[dict]) -> dict:
+    """Return a new flashcard navigation state."""
+    return {"cards": cards, "index": 0, "side": "question"}
+
+
+def _render_flashcard(state: dict) -> str:
+    """Return the currently visible side of the flashcard."""
+    if not state or not state.get("cards"):
+        return ""
+    card = state["cards"][state["index"]]
+    side = state.get("side", "question")
+    return card.get(side, "")
+
+
+def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tuple[str, dict, str, str]:
+    """Generate flashcards from a topic and prepare viewer state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     flashcards = FlashcardSet(topic)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag)
-        flashcards.save_to_file()
-    return flashcards.to_dict_list(), buffer.getvalue()
+        path = flashcards.save_to_file()
+    logs = buffer.getvalue()
+    if path:
+        logs += f"\nSaved to: {path}"
+    cards = flashcards.to_dict_list()
+    state = _init_flashcard_state(cards)
+    first = _render_flashcard(state)
+    progress = f"1/{len(cards)}" if cards else "0/0"
+    return first, state, logs, progress
 
-def run_flashcards_review(path: str) -> str:
-    """Review flashcards from a saved file (auto answer)."""
+def run_flashcards_review(path: str) -> tuple[str, dict, str]:
+    """Load flashcards from file for interactive review."""
     flashcards = FlashcardSet.load_from_file(path)
     if not flashcards:
-        return "Failed to load flashcards."
-    buffer = io.StringIO()
-    import builtins
+        return "Failed to load flashcards.", {}, "0/0"
+    cards = flashcards.to_dict_list()
+    state = _init_flashcard_state(cards)
+    first = _render_flashcard(state)
+    progress = f"1/{len(cards)}" if cards else "0/0"
+    return first, state, progress
 
-    def _fake_input(prompt: str = ""):
-        return ""
 
-    with redirect_stdout(buffer):
-        original_input = builtins.input
-        builtins.input = _fake_input
-        try:
-            flashcards.run_cli_review()
-        finally:
-            builtins.input = original_input
-    return buffer.getvalue()
+def flashcard_flip(state: dict) -> tuple[str, dict]:
+    """Flip between question and answer."""
+    if not state or not state.get("cards"):
+        return "", state
+    state["side"] = "answer" if state.get("side") == "question" else "question"
+    return _render_flashcard(state), state
+
+
+def flashcard_next(state: dict) -> tuple[str, dict, str]:
+    """Move to the next flashcard."""
+    if not state or not state.get("cards"):
+        return "", state, "0/0"
+    state["index"] = (state["index"] + 1) % len(state["cards"])
+    state["side"] = "question"
+    return _render_flashcard(state), state, f"{state['index'] + 1}/{len(state['cards'])}"
+
+
+def flashcard_prev(state: dict) -> tuple[str, dict, str]:
+    """Move to the previous flashcard."""
+    if not state or not state.get("cards"):
+        return "", state, "0/0"
+    state["index"] = (state["index"] - 1) % len(state["cards"])
+    state["side"] = "question"
+    return _render_flashcard(state), state, f"{state['index'] + 1}/{len(state['cards'])}"
+
+
+def flashcard_shuffle(state: dict) -> tuple[str, dict, str]:
+    """Shuffle flashcards order and restart."""
+    if not state or not state.get("cards"):
+        return "", state, "0/0"
+    random.shuffle(state["cards"])
+    state["index"] = 0
+    state["side"] = "question"
+    return _render_flashcard(state), state, f"1/{len(state['cards'])}"
 
 
 def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
@@ -273,15 +322,34 @@ def build_interface() -> gr.Blocks:
                     fc_topic = gr.Textbox(label="Topic")
                     fc_rag = gr.Checkbox(label="Use RAG", value=False)
                     fc_gen_btn = gr.Button("Generate")
-                    fc_cards = gr.JSON(label="Flashcards")
+                    fc_card = gr.Markdown()
+                    with gr.Row():
+                        fc_prev = gr.Button("Prev")
+                        fc_flip = gr.Button("Flip")
+                        fc_next = gr.Button("Next")
+                        fc_shuffle = gr.Button("Shuffle")
+                    fc_counter = gr.Textbox(label="Card", value="0/0")
                     fc_logs = gr.Textbox(label="Logs", lines=4)
-                    fc_gen_btn.click(run_flashcards_generate, [fc_topic, fc_rag, lang_select], [fc_cards, fc_logs])
+                    fc_state = gr.State()
+
+                    fc_gen_btn.click(
+                        run_flashcards_generate,
+                        [fc_topic, fc_rag, lang_select],
+                        [fc_card, fc_state, fc_logs, fc_counter],
+                    )
+                    fc_flip.click(flashcard_flip, fc_state, [fc_card, fc_state])
+                    fc_next.click(flashcard_next, fc_state, [fc_card, fc_state, fc_counter])
+                    fc_prev.click(flashcard_prev, fc_state, [fc_card, fc_state, fc_counter])
+                    fc_shuffle.click(flashcard_shuffle, fc_state, [fc_card, fc_state, fc_counter])
 
                 with gr.Accordion("Review flashcards", open=False):
                     fc_path = gr.Textbox(label="Path to flashcards JSON")
-                    fc_rev_btn = gr.Button("Review")
-                    fc_review_out = gr.Textbox(label="Review Output", lines=10)
-                    fc_rev_btn.click(run_flashcards_review, fc_path, fc_review_out)
+                    fc_load_btn = gr.Button("Load")
+                    fc_load_btn.click(
+                        run_flashcards_review,
+                        fc_path,
+                        [fc_card, fc_state, fc_counter],
+                    )
 
             # Summary tab
             with gr.TabItem("Summary"):
