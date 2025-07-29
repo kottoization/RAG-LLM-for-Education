@@ -79,7 +79,7 @@ def respond(
         result = LanguageHandler.ensure_language(result, language)
         if used_fallback:
             notice = LanguageHandler.ensure_language(
-                "Wiadomość generowana przez LLM, sprawdź jej poprawność ❗",
+                "Wiadomość generowana przez LLM, sprawdź jej poprawność &#10071;",
                 language,
             )
             result = f"<div class='fallback'>{notice}<br>{result}</div>"
