@@ -96,9 +96,10 @@ def run_agent(
         try:
             msg = llm.invoke(question)
             output = getattr(msg, "content", str(msg))
-            used_fallback = True
         except Exception as e:  # pragma: no cover - API errors
             output = f"LLM error: {e}"
+        finally:
+            used_fallback = True
 
     output = LanguageHandler.ensure_language(output, lang)
     if return_details:

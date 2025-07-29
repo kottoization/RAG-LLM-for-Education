@@ -51,6 +51,9 @@ CSS = """
   background-color: #f0f0f0;
   border-radius: 8px;
 }
+#chatbot .message.bot.fallback {
+  background-color: #fff9c4;
+}
 """
 
 
@@ -67,7 +70,7 @@ def respond(
                 "Wiadomość generowana przez LLM, sprawdź jej poprawność",
                 language,
             )
-            result = f"{notice}\n{result}"
+            result = f"<div class='fallback'>{notice}<br>{result}</div>"
     history = history + [(message, result)]
     logs = buffer.getvalue()
     return history, logs
