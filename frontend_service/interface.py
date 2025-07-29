@@ -15,8 +15,7 @@ from AgentModule.edu_agent import run_agent
 from CheatSheetModule import CheatSheetGenerator
 from FlashcardsModule import FlashcardSet
 from LearningPlanModule import LearningPlan
-from QuizModule import (generate_learning_plan_from_quiz, generate_quiz,
-                        prepare_quiz_questions)
+from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
 from SummaryModule import StudySummaryGenerator
 from tools.language_handler import LanguageHandler
 
