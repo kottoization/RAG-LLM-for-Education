@@ -8,6 +8,7 @@ from tools.edu_tools import (
     calculator,
     document_search,
     current_date,
+    current_weekday,
     detect_language,
 )
 
@@ -43,6 +44,7 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
         calculator,
         document_search,
         current_date,
+        current_weekday,
         detect_language,
     ]
     llm = ChatOpenAI(model=model_name, temperature=0)
@@ -50,12 +52,58 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
     return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 
-def run_agent(question: str) -> str:
-    """Run the default agent on a question and return the answer."""
-    executor = create_agent()
+def run_agent(
+    question: str,
+    executor: AgentExecutor | None = None,
+    return_details: bool = False,
+) -> str | tuple[str, bool]:
+    """Run the default agent on a question and return the answer.
+
+    If the agent cannot provide a useful response (e.g. tool errors), the
+    question is answered directly by the LLM as a fallback.
+
+    Set ``return_details=True`` to also return whether the LLM fallback was used.
+    """
+    executor = executor or create_agent()
     from tools.language_handler import LanguageHandler
+
     lang = LanguageHandler.choose_or_detect(question)
-    result = executor.invoke({"input": question, "language": lang})
-    output = result["output"]
+    try:
+        result = executor.invoke({"input": question, "language": lang})
+        output = result["output"]
+    except Exception as e:  # pragma: no cover - agent execution errors
+        output = f"Agent error: {e}"
+
+    used_fallback = False
+
+    def _needs_fallback(text: str) -> bool:
+        markers = [
+            "error",
+            "not found",
+            "couldn't",
+            "could not",
+            "unable to",
+            "sorry",
+            "unfortunately",
+            "niestety",
+            "nie uda",
+            "nie mog",
+            "brak",
+        ]
+        text = text.lower()
+        return any(m in text for m in markers)
+
+    if _needs_fallback(output):
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+        try:
+            msg = llm.invoke(question)
+            output = getattr(msg, "content", str(msg))
+        except Exception as e:  # pragma: no cover - API errors
+            output = f"LLM error: {e}"
+        finally:
+            used_fallback = True
+
     output = LanguageHandler.ensure_language(output, lang)
+    if return_details:
+        return output, used_fallback
     return output

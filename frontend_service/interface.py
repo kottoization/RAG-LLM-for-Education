@@ -11,14 +11,20 @@ import gradio as gr
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from AgentModule import create_agent
-from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
+
+from AgentModule.edu_agent import run_agent
+from QuizModule import (
+    generate_quiz,
+    generate_learning_plan_from_quiz,
+    prepare_quiz_questions,
+)
 from LearningPlanModule import LearningPlan
 from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
 
-dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
+dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv(dotenv_path)
 
 warnings.filterwarnings(
@@ -81,20 +87,44 @@ CSS = """
 #flashcard-container .progress-bar-wrap,
 #flashcard-container .eta-bar {
   display: none !important;
+#chatbot .message.bot.fallback {
+  background-color: #fff9c4;
 }
 """
 
 
-def respond(message: str, history: list[tuple[str, str]], lang_choice: str) -> tuple[list[tuple[str, str]], str]:
+def respond(
+    message: str, history: list[tuple[str, str]], lang_choice: str
+) -> tuple[list[tuple[str, str]], str]:
+    """Return updated chat history and logs.
+
+    The user's message is yielded immediately so it appears in the UI while the
+    bot processes the response.
+    """
+
+    # show the user's message right away with a placeholder for the response
+    history = history + [(message, "...")]
+    yield history, ""
+
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(message)
+
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        result = agent.invoke({"input": message, "language": language})["output"]
+        result, used_fallback = run_agent(message, executor=agent, return_details=True)
         result = LanguageHandler.ensure_language(result, language)
-    history = history + [(message, result)]
+        if used_fallback:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana przez LLM, sprawdź jej poprawność &#10071;",
+                language,
+            )
+            result = f"<div class='fallback'>{notice}<br>{result}</div>"
+
+
+    # replace the placeholder with the actual response
+    history[-1] = (message, result)
     logs = buffer.getvalue()
-    return history, logs
+    yield history, logs
 
 
 def _format_question(q: dict) -> str:
@@ -162,7 +192,9 @@ def _compile_results(state: dict) -> str:
         lines.append(f"{topic}: {corr}/{tot} ({perc:.2f}%)")
         total_questions += tot
     if lines:
-        overall = sum((corr / tot) * 100 if tot else 0 for corr, tot in state["scores"].values())
+        overall = sum(
+            (corr / tot) * 100 if tot else 0 for corr, tot in state["scores"].values()
+        )
         overall /= len(state["scores"])
         lines.append(f"\nOverall Score: {total_correct}/{total_questions} ({overall:.2f}%)")
     result = "\n".join(lines)
@@ -226,6 +258,7 @@ def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tupl
     first = _render_flashcard(state)
     progress = f"1/{len(cards)}" if cards else "0/0"
     return first, state, logs, progress
+
 
 def run_flashcards_review(path: str) -> tuple[str, dict, str]:
     """Load flashcards from file for interactive review."""
@@ -306,7 +339,10 @@ def build_interface() -> gr.Blocks:
             with gr.TabItem("Chat with the bot"):
                 chatbot = gr.Chatbot(elem_id="chatbot")
                 with gr.Row():
-                    msg = gr.Textbox(placeholder="Type your message and press enter...", container=False)
+                    msg = gr.Textbox(
+                        placeholder="Type your message and press enter...",
+                        container=False,
+                    )
                     send = gr.Button("Send", variant="primary")
                     clear = gr.Button("Clear")
                 logs = gr.Textbox(label="Terminal output", lines=8)
@@ -335,12 +371,36 @@ def build_interface() -> gr.Blocks:
                 plan_quiz_output = gr.Textbox(label="Plan Output", lines=10)
                 quiz_state = gr.State()
 
-                start_btn.click(start_quiz, [quiz_subject, quiz_rag, lang_select], [quiz_question, quiz_state, quiz_result])
-                btn_a.click(lambda st: answer_quiz("a", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_b.click(lambda st: answer_quiz("b", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_c.click(lambda st: answer_quiz("c", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_d.click(lambda st: answer_quiz("d", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                plan_quiz_btn.click(run_learning_plan_from_quiz, [quiz_name, quiz_state], plan_quiz_output)
+                start_btn.click(
+                    start_quiz,
+                    [quiz_subject, quiz_rag, lang_select],
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_a.click(
+                    lambda st: answer_quiz("a", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_b.click(
+                    lambda st: answer_quiz("b", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_c.click(
+                    lambda st: answer_quiz("c", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_d.click(
+                    lambda st: answer_quiz("d", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                plan_quiz_btn.click(
+                    run_learning_plan_from_quiz,
+                    [quiz_name, quiz_state],
+                    plan_quiz_output,
+                )
 
             # Learning plan tab
             with gr.TabItem("Learning plan"):
