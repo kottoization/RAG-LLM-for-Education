@@ -126,7 +126,11 @@ class FlashcardSet:
                 })
                 raw_output = response.content
 
-            pairs = re.findall(r"Q:\s*(.+?)\nA:\s*(.+?)(?=\nQ:|\Z)", raw_output, re.DOTALL)
+            pairs = re.findall(
+                r"(?:\d+\.\s*)?Q:\s*(.+?)\s*A:\s*(.+?)(?=\s*(?:\d+\.\s*)?Q:|\Z)",
+                raw_output,
+                re.DOTALL,
+            )
 
             for q, a in pairs:
                 self.add_flashcard(Flashcard(q.strip(), a.strip()))
@@ -159,8 +163,10 @@ class FlashcardSet:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.to_dict_list(), f, indent=4, ensure_ascii=False)
             print(f"💾 Flashcards saved to {path}")
+            return path
         except Exception as e:
             print(f"❌ Failed to save flashcards: {e}")
+            return ""
 
     @staticmethod
     def load_from_file(path: str):

@@ -62,6 +62,9 @@ python frontend_service/main.py
 
 Both entry points import the same agent used by the optional CLI so you get identical behaviour in the browser.
 
+### Flashcards
+The Flashcards tab lets you generate and review cards inside a small card-style panel. Use the arrow buttons to cycle through cards, flip to reveal answers, or shuffle the deck. A counter below the card shows your progress (e.g. `3/10`).
+
 ## Project Structure
 - `AgentModule/` – creation of the LangChain agent and reusable tools
 - `RAGModule/` – utilities for loading documents and building a Chroma vector store
