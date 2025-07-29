@@ -2,25 +2,26 @@ import json
 import os
 import re
 from datetime import datetime
-from langchain_openai import ChatOpenAI
-from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
+
 from langchain.chains import RetrievalQA
+from langchain.schema.runnable import RunnableBranch, RunnableLambda, RunnableSequence
+from langchain_openai import ChatOpenAI
+
 from RAGModule.rag import RAGHandler
 from tools.auto_answer import auto_answer
+
 
 class Flashcard:
     """
     Represents a single flashcard with a question and an answer.
     """
+
     def __init__(self, question: str, answer: str):
         self.question = question.strip()
         self.answer = answer.strip()
 
     def to_dict(self):
-        return {
-            "question": self.question,
-            "answer": self.answer
-        }
+        return {"question": self.question, "answer": self.answer}
 
     @staticmethod
     def from_dict(data):
@@ -31,6 +32,7 @@ class FlashcardSet:
     """
     Manages a set of flashcards: generation, review, and saving.
     """
+
     def __init__(self, topic: str, flashcards=None, retriever=None):
         self.topic = topic.strip()
         self.flashcards = flashcards if flashcards else []
@@ -51,13 +53,21 @@ class FlashcardSet:
                 options = re.findall(r"[a-d]\)\s*(.*)", block)
 
                 if question_match and correct_match and options:
-                    idx = ord(correct_match.group(1).lower()) - ord('a')
+                    idx = ord(correct_match.group(1).lower()) - ord("a")
                     answer = options[idx]
-                    self.add_flashcard(Flashcard(question=question_match.group(1), answer=answer))
+                    self.add_flashcard(
+                        Flashcard(question=question_match.group(1), answer=answer)
+                    )
             except Exception as e:
                 print(f"⚠️ Error parsing block: {e}")
 
-    def generate_from_prompt(self, topic_prompt: str, language: str = "en", use_rag: bool = False, retriever=None):
+    def generate_from_prompt(
+        self,
+        topic_prompt: str,
+        language: str = "en",
+        use_rag: bool = False,
+        retriever=None,
+    ):
         """
         Uses an LLM (optionally with RAG) to generate flashcards based on a topic prompt.
         When ``use_rag`` is True, additional context from your indexed documents is
@@ -82,7 +92,7 @@ class FlashcardSet:
 
         branch = RunnableBranch(
             (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
-            RunnableLambda(_skip_context)
+            RunnableLambda(_skip_context),
         )
 
         def _build_prompt(inputs):
@@ -93,7 +103,7 @@ class FlashcardSet:
                 prompt += context + "\n\n"
             prompt += (
                 f"You are an expert educator preparing students for a rigorous test or exam.\n"
-                f"Generate a high-quality, detailed list of flashcards for the topic: \"{topic}\".\n"
+                f'Generate a high-quality, detailed list of flashcards for the topic: "{topic}".\n'
                 f"The flashcards should include:\n"
                 f"- definitions of core concepts\n"
                 f"- names and explanations of key theorems or formulas\n"
@@ -113,17 +123,17 @@ class FlashcardSet:
             # Use any available retriever only when RAG is enabled
             if use_rag and retriever:
                 qa = RetrievalQA.from_chain_type(
-                    llm=llm,
-                    chain_type="stuff",
-                    retriever=retriever
+                    llm=llm, chain_type="stuff", retriever=retriever
                 )
                 raw_output = qa.run(topic_prompt)
             else:
-                response = chain.invoke({
-                    "topic_prompt": topic_prompt,
-                    "language": language,
-                    "use_rag": use_rag,
-                })
+                response = chain.invoke(
+                    {
+                        "topic_prompt": topic_prompt,
+                        "language": language,
+                        "use_rag": use_rag,
+                    }
+                )
                 raw_output = response.content
 
             pairs = re.findall(
