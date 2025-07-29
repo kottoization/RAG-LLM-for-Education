@@ -63,16 +63,14 @@ CSS = """
   margin-bottom: 8px;
 }
 #flashcard-buttons {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-#flashcard-buttons .gr-row {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 4px;
   justify-content: center;
 }
 #flashcard-buttons button {
   width: 48px;
-  margin: 4px;
+  margin: 0;
 }
 #flashcard-counter {
   font-weight: bold;
@@ -361,12 +359,10 @@ def build_interface() -> gr.Blocks:
                     with gr.Column(elem_id="flashcard-container"):
                         fc_card = gr.Markdown(elem_id="flashcard-content")
                         with gr.Column(elem_id="flashcard-buttons"):
-                            with gr.Row():
-                                fc_prev = gr.Button("⬅️", size="sm", scale=0)
-                                fc_flip = gr.Button("🔄", size="sm", scale=0)
-                            with gr.Row():
-                                fc_next = gr.Button("➡️", size="sm", scale=0)
-                                fc_shuffle = gr.Button("🔀", size="sm", scale=0)
+                            fc_prev = gr.Button("⬅️", size="sm", scale=0)
+                            fc_next = gr.Button("➡️", size="sm", scale=0)
+                            fc_flip = gr.Button("🔄", size="sm", scale=0)
+                            fc_shuffle = gr.Button("🔀", size="sm", scale=0)
                         fc_counter = gr.Markdown("0/0", elem_id="flashcard-counter")
                     fc_logs = gr.Textbox(label="Logs", lines=4)
                     fc_state = gr.State()
