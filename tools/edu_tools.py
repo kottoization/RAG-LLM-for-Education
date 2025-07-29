@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from langchain.tools import tool
 from nltk.corpus import wordnet as wn
-from langdetect import detect
 from datetime import datetime
 
 # Lazy import wikipedia to avoid unnecessary dependency at runtime
@@ -79,9 +78,16 @@ def current_date(_: str = "") -> str:
 
 
 @tool
+def current_weekday(_: str = "") -> str:
+    """Return the current day of the week."""
+    return datetime.utcnow().strftime("%A")
+
+
+@tool
 def detect_language(text: str) -> str:
     """Detect the language of a given text sample."""
+    from tools.language_handler import LanguageHandler
     try:
-        return detect(text)
+        return LanguageHandler.detect_language(text)
     except Exception as e:  # pragma: no cover - detection errors
         return f"Error detecting language: {e}"
