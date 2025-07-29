@@ -11,7 +11,7 @@ import gradio as gr
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from AgentModule import create_agent
-from QuizModule import generate_quiz, generate_learning_plan_from_quiz, prepare_quiz_questions
+from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
 from LearningPlanModule import LearningPlan
 from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
@@ -74,6 +74,12 @@ CSS = """
   font-weight: bold;
   margin-top: 8px;
 }
+#flashcard-container .wrap,
+#flashcard-container .progress-text,
+#flashcard-container .progress-bar-wrap,
+#flashcard-container .eta-bar {
+  display: none !important;
+}
 """
 
 
@@ -114,7 +120,6 @@ def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict
         "index": 0,
         "scores": {},
         "correct_total": 0,
-        "language": language,
     }
     first_q = _format_question(questions[0])
     return first_q, state, ""
@@ -354,9 +359,9 @@ def build_interface() -> gr.Blocks:
                         with gr.Column(elem_id="flashcard-buttons"):
                             with gr.Row():
                                 fc_prev = gr.Button("⬅️", size="sm", scale=0)
-                                fc_next = gr.Button("➡️", size="sm", scale=0)
-                            with gr.Row():
                                 fc_flip = gr.Button("🔄", size="sm", scale=0)
+                            with gr.Row():
+                                fc_next = gr.Button("➡️", size="sm", scale=0)
                                 fc_shuffle = gr.Button("🔀", size="sm", scale=0)
                         fc_counter = gr.Markdown("0/0", elem_id="flashcard-counter")
                     fc_logs = gr.Textbox(label="Logs", lines=4)
