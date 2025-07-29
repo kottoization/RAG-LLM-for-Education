@@ -127,7 +127,7 @@ class FlashcardSet:
                 raw_output = response.content
 
             pairs = re.findall(
-                r"(?:\d+\.\s*)?Q:\s*(.+?)\nA:\s*(.+?)(?=\n(?:\d+\.\s*)?Q:|\Z)",
+                r"(?:\d+\.\s*)?Q:\s*(.+?)\s*A:\s*(.+?)(?=\s*(?:\d+\.\s*)?Q:|\Z)",
                 raw_output,
                 re.DOTALL,
             )
