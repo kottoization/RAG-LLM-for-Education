@@ -55,6 +55,7 @@ CSS = """
   max-width: 500px;
   margin: auto;
   text-align: center;
+  width: fit-content;
 }
 #flashcard-content {
   min-height: 120px;
@@ -65,6 +66,9 @@ CSS = """
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+#flashcard-buttons .gr-row {
+  justify-content: center;
 }
 #flashcard-buttons button {
   width: 48px;
@@ -371,11 +375,29 @@ def build_interface() -> gr.Blocks:
                         run_flashcards_generate,
                         [fc_topic, fc_rag, lang_select],
                         [fc_card, fc_state, fc_logs, fc_counter],
+                        show_progress=False,
                     )
-                    fc_flip.click(flashcard_flip, fc_state, [fc_card, fc_state])
-                    fc_next.click(flashcard_next, fc_state, [fc_card, fc_state, fc_counter])
-                    fc_prev.click(flashcard_prev, fc_state, [fc_card, fc_state, fc_counter])
-                    fc_shuffle.click(flashcard_shuffle, fc_state, [fc_card, fc_state, fc_counter])
+                    fc_flip.click(
+                        flashcard_flip, fc_state, [fc_card, fc_state], show_progress=False
+                    )
+                    fc_next.click(
+                        flashcard_next,
+                        fc_state,
+                        [fc_card, fc_state, fc_counter],
+                        show_progress=False,
+                    )
+                    fc_prev.click(
+                        flashcard_prev,
+                        fc_state,
+                        [fc_card, fc_state, fc_counter],
+                        show_progress=False,
+                    )
+                    fc_shuffle.click(
+                        flashcard_shuffle,
+                        fc_state,
+                        [fc_card, fc_state, fc_counter],
+                        show_progress=False,
+                    )
 
                 with gr.Accordion("Review flashcards", open=False):
                     fc_path = gr.Textbox(label="Path to flashcards JSON")
@@ -384,6 +406,7 @@ def build_interface() -> gr.Blocks:
                         run_flashcards_review,
                         fc_path,
                         [fc_card, fc_state, fc_counter],
+                        show_progress=False,
                     )
 
             # Summary tab
