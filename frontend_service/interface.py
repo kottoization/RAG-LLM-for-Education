@@ -60,8 +60,14 @@ def respond(
     language = LanguageHandler.choose_or_detect(message)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        result = run_agent(message, executor=agent)
+        result, used_fallback = run_agent(message, executor=agent, return_details=True)
         result = LanguageHandler.ensure_language(result, language)
+        if used_fallback:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana przez LLM, sprawdź jej poprawność",
+                language,
+            )
+            result = f"{notice}\n{result}"
     history = history + [(message, result)]
     logs = buffer.getvalue()
     return history, logs

@@ -17,8 +17,14 @@ def auto_answer(text: str, agent: Optional[AgentExecutor] = None) -> bool:
     if text.strip().endswith("?"):
         agent = agent or create_agent()
         language = LanguageHandler.choose_or_detect(text)
-        answer = run_agent(text, executor=agent)
+        answer, used_fallback = run_agent(text, executor=agent, return_details=True)
         answer = LanguageHandler.ensure_language(answer, language)
+        if used_fallback:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana przez LLM, sprawdź jej poprawność",
+                language,
+            )
+            answer = f"{notice}\n{answer}"
         print(f"\n\U0001f916 Agent Answer:\n{answer}\n")
         return True
     return False

@@ -50,11 +50,17 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
     return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 
-def run_agent(question: str, executor: AgentExecutor | None = None) -> str:
+def run_agent(
+    question: str,
+    executor: AgentExecutor | None = None,
+    return_details: bool = False,
+) -> str | tuple[str, bool]:
     """Run the default agent on a question and return the answer.
 
     If the agent cannot provide a useful response (e.g. tool errors), the
     question is answered directly by the LLM as a fallback.
+
+    Set ``return_details=True`` to also return whether the LLM fallback was used.
     """
     executor = executor or create_agent()
     from tools.language_handler import LanguageHandler
@@ -65,6 +71,8 @@ def run_agent(question: str, executor: AgentExecutor | None = None) -> str:
         output = result["output"]
     except Exception as e:  # pragma: no cover - agent execution errors
         output = f"Agent error: {e}"
+
+    used_fallback = False
 
     def _needs_fallback(text: str) -> bool:
         markers = [
@@ -88,8 +96,11 @@ def run_agent(question: str, executor: AgentExecutor | None = None) -> str:
         try:
             msg = llm.invoke(question)
             output = getattr(msg, "content", str(msg))
+            used_fallback = True
         except Exception as e:  # pragma: no cover - API errors
             output = f"LLM error: {e}"
 
     output = LanguageHandler.ensure_language(output, lang)
+    if return_details:
+        return output, used_fallback
     return output

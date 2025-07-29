@@ -66,8 +66,16 @@ def chat_with_bot():
                 # Pre-load vector store so the agent can query documents
                 pass
             language = LanguageHandler.choose_or_detect(query)
-            answer = run_agent(query, executor=_agent)
+            answer, used_fallback = run_agent(
+                query, executor=_agent, return_details=True
+            )
             answer = LanguageHandler.ensure_language(answer, language)
+            if used_fallback:
+                notice = LanguageHandler.ensure_language(
+                    "Wiadomość generowana przez LLM, sprawdź jej poprawność",
+                    language,
+                )
+                answer = f"{notice}\n{answer}"
             print(f"AI: {answer}")
             chat_history.append((query, answer))
 
