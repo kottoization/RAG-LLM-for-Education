@@ -5,6 +5,58 @@ from deep_translator import GoogleTranslator
 
 CONFIG_PATH = os.path.join("data", "user_config.json")
 
+SUPPORTED_LANGUAGES = [
+    "auto",
+    "en",
+    "pl",
+    "cs",
+    "sk",
+    "de",
+    "fr",
+    "es",
+    "it",
+    "pt",
+    "ru",
+    "uk",
+    "nl",
+    "sv",
+    "fi",
+    "no",
+    "da",
+    "tr",
+    "ja",
+    "ko",
+    "zh",
+    "ar",
+    "he",
+]
+
+LANGUAGE_LABELS = {
+    "auto": "🌐 Auto-detect",
+    "en": "🇺🇸 English",
+    "pl": "🇵🇱 Polski",
+    "cs": "🇨🇿 Čeština",
+    "sk": "🇸🇰 Slovenčina",
+    "de": "🇩🇪 Deutsch",
+    "fr": "🇫🇷 Français",
+    "es": "🇪🇸 Español",
+    "it": "🇮🇹 Italiano",
+    "pt": "🇵🇹 Português",
+    "ru": "🇷🇺 Русский",
+    "uk": "🇺🇦 Українська",
+    "nl": "🇳🇱 Nederlands",
+    "sv": "🇸🇪 Svenska",
+    "fi": "🇫🇮 Suomi",
+    "no": "🇳🇴 Norsk",
+    "da": "🇩🇰 Dansk",
+    "tr": "🇹🇷 Türkçe",
+    "ja": "🇯🇵 日本語",
+    "ko": "🇰🇷 한국어",
+    "zh": "🇨🇳 中文",
+    "ar": "🇸🇦 العربية",
+    "he": "🇮🇱 עברית",
+}
+
 
 class LanguageHandler:
     @staticmethod
@@ -56,3 +108,19 @@ class LanguageHandler:
         if detected != language:
             return LanguageHandler.translate(text, language)
         return text
+
+    @staticmethod
+    def supported_languages() -> list[str]:
+        return SUPPORTED_LANGUAGES
+
+    @staticmethod
+    def dropdown_choices() -> list[str]:
+        """Return display strings for the language dropdown."""
+        return [LANGUAGE_LABELS[code] for code in SUPPORTED_LANGUAGES]
+
+    @staticmethod
+    def code_from_display(display: str) -> str:
+        for code, label in LANGUAGE_LABELS.items():
+            if label == display:
+                return code
+        return "auto"

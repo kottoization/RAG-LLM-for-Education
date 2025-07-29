@@ -58,9 +58,21 @@ CSS = """
 
 
 def respond(
-    message: str, history: list[tuple[str, str]]
+    message: str, history: list[tuple[str, str]], lang_choice: str
 ) -> tuple[list[tuple[str, str]], str]:
-    language = LanguageHandler.choose_or_detect(message)
+    """Return updated chat history and logs.
+
+    The user's message is yielded immediately so it appears in the UI while the
+    bot processes the response.
+    """
+
+    # show the user's message right away with a placeholder for the response
+    history = history + [(message, "...")]
+    yield history, ""
+
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(message)
+
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         result, used_fallback = run_agent(message, executor=agent, return_details=True)
@@ -71,9 +83,11 @@ def respond(
                 language,
             )
             result = f"<div class='fallback'>{notice}<br>{result}</div>"
-    history = history + [(message, result)]
+
+    # replace the placeholder with the actual response
+    history[-1] = (message, result)
     logs = buffer.getvalue()
-    return history, logs
+    yield history, logs
 
 
 def _format_question(q: dict) -> str:
@@ -87,13 +101,16 @@ def _format_question(q: dict) -> str:
     return f"**{q['topic']}**\n\n{text}"
 
 
-def start_quiz(subject: str, use_rag: bool) -> tuple[str, dict, str]:
+def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict, str]:
     """Generate quiz questions and return the first one with state."""
-    language = LanguageHandler.choose_or_detect(subject)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(subject)
     questions = prepare_quiz_questions(subject, language=language, use_rag=use_rag)
     if not questions:
         return "Failed to generate quiz.", {}, ""
     state = {
+        "subject": subject,
+        "language": language,
         "questions": questions,
         "index": 0,
         "scores": {},
@@ -145,12 +162,15 @@ def _compile_results(state: dict) -> str:
         lines.append(
             f"\nOverall Score: {total_correct}/{total_questions} ({overall:.2f}%)"
         )
-    return "\n".join(lines)
+    result = "\n".join(lines)
+    lang = state.get("language", "auto")
+    return LanguageHandler.ensure_language(result, lang)
 
 
-def run_learning_plan_interface(name: str, goals: str) -> str:
+def run_learning_plan_interface(name: str, goals: str, lang_choice: str) -> str:
     """Generate a learning plan from custom goals."""
-    language = LanguageHandler.choose_or_detect(goals)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(goals)
     plan = LearningPlan(user_name=name, user_language=language)
     goals_list = [g.strip() for g in goals.split(";") if g.strip()]
     user_input = {"goals": goals_list}
@@ -162,9 +182,23 @@ def run_learning_plan_interface(name: str, goals: str) -> str:
     return buffer.getvalue()
 
 
-def run_flashcards_generate(topic: str, use_rag: bool) -> tuple[list[dict], str]:
+def run_learning_plan_from_quiz(name: str, state: dict) -> str:
+    """Generate a learning plan based on completed quiz results."""
+    if not state or not state.get("scores"):
+        return "No quiz results available."
+    language = state.get("language") or LanguageHandler.choose_or_detect(name)
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        generate_learning_plan_from_quiz(name, state["scores"], language)
+    return buffer.getvalue()
+
+
+def run_flashcards_generate(
+    topic: str, use_rag: bool, lang_choice: str
+) -> tuple[list[dict], str]:
     """Generate flashcards from a topic."""
-    language = LanguageHandler.choose_or_detect(topic)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     flashcards = FlashcardSet(topic)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
@@ -196,16 +230,18 @@ def run_flashcards_review(path: str) -> str:
     return buffer.getvalue()
 
 
-def run_summary_interface(topic: str, use_rag: bool) -> str:
+def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     """Generate a detailed study summary."""
-    language = LanguageHandler.choose_or_detect(topic)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
     return summarizer.generate_summary(topic, language=language, use_rag=use_rag)
 
 
-def run_cheatsheet_interface(topic: str, use_rag: bool) -> str:
+def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     """Generate a cheat sheet."""
-    language = LanguageHandler.choose_or_detect(topic)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     generator = CheatSheetGenerator()
     return generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
 
@@ -214,6 +250,11 @@ def build_interface() -> gr.Blocks:
     """Create the Gradio UI replicating the CLI menu."""
     with gr.Blocks(css=CSS, theme=gr.themes.Soft()) as demo:
         gr.Markdown("# EduGen", elem_id="title")
+        lang_select = gr.Dropdown(
+            choices=LanguageHandler.dropdown_choices(),
+            value=LanguageHandler.dropdown_choices()[0],
+            label="Language",
+        )
 
         with gr.Tabs():
             # Chat tab
@@ -231,8 +272,8 @@ def build_interface() -> gr.Blocks:
                 def clear_history():
                     return [], ""
 
-                msg.submit(respond, [msg, chatbot], [chatbot, logs])
-                send.click(respond, [msg, chatbot], [chatbot, logs])
+                msg.submit(respond, [msg, chatbot, lang_select], [chatbot, logs])
+                send.click(respond, [msg, chatbot, lang_select], [chatbot, logs])
                 clear.click(clear_history, None, [chatbot, logs])
 
             # Quiz tab
@@ -247,11 +288,14 @@ def build_interface() -> gr.Blocks:
                     btn_c = gr.Button("C")
                     btn_d = gr.Button("D")
                 quiz_result = gr.Markdown()
+                quiz_name = gr.Textbox(label="Your name")
+                plan_quiz_btn = gr.Button("Generate Learning Plan from Quiz")
+                plan_quiz_output = gr.Textbox(label="Plan Output", lines=10)
                 quiz_state = gr.State()
 
                 start_btn.click(
                     start_quiz,
-                    [quiz_subject, quiz_rag],
+                    [quiz_subject, quiz_rag, lang_select],
                     [quiz_question, quiz_state, quiz_result],
                 )
                 btn_a.click(
@@ -274,6 +318,11 @@ def build_interface() -> gr.Blocks:
                     quiz_state,
                     [quiz_question, quiz_state, quiz_result],
                 )
+                plan_quiz_btn.click(
+                    run_learning_plan_from_quiz,
+                    [quiz_name, quiz_state],
+                    plan_quiz_output,
+                )
 
             # Learning plan tab
             with gr.TabItem("Learning plan"):
@@ -282,7 +331,9 @@ def build_interface() -> gr.Blocks:
                 plan_btn = gr.Button("Generate Plan")
                 plan_output = gr.Textbox(label="Plan Output", lines=10)
                 plan_btn.click(
-                    run_learning_plan_interface, [plan_name, plan_goals], plan_output
+                    run_learning_plan_interface,
+                    [plan_name, plan_goals, lang_select],
+                    plan_output,
                 )
 
             # Flashcards tab
@@ -294,7 +345,9 @@ def build_interface() -> gr.Blocks:
                     fc_cards = gr.JSON(label="Flashcards")
                     fc_logs = gr.Textbox(label="Logs", lines=4)
                     fc_gen_btn.click(
-                        run_flashcards_generate, [fc_topic, fc_rag], [fc_cards, fc_logs]
+                        run_flashcards_generate,
+                        [fc_topic, fc_rag, lang_select],
+                        [fc_cards, fc_logs],
                     )
 
                 with gr.Accordion("Review flashcards", open=False):
@@ -309,7 +362,9 @@ def build_interface() -> gr.Blocks:
                 sum_rag = gr.Checkbox(label="Use RAG", value=False)
                 sum_btn = gr.Button("Generate Summary")
                 sum_output = gr.Textbox(label="Summary", lines=10)
-                sum_btn.click(run_summary_interface, [sum_topic, sum_rag], sum_output)
+                sum_btn.click(
+                    run_summary_interface, [sum_topic, sum_rag, lang_select], sum_output
+                )
 
             # Cheat sheet tab
             with gr.TabItem("Cheat sheet"):
@@ -317,7 +372,9 @@ def build_interface() -> gr.Blocks:
                 cs_rag = gr.Checkbox(label="Use RAG", value=False)
                 cs_btn = gr.Button("Generate Cheat Sheet")
                 cs_output = gr.Textbox(label="Cheat Sheet", lines=10)
-                cs_btn.click(run_cheatsheet_interface, [cs_topic, cs_rag], cs_output)
+                cs_btn.click(
+                    run_cheatsheet_interface, [cs_topic, cs_rag, lang_select], cs_output
+                )
 
     return demo
 
