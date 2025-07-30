@@ -116,7 +116,6 @@ def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict
         "index": 0,
         "scores": {},
         "correct_total": 0,
-        "language": language,
     }
     first_q = _format_question(questions[0])
     return first_q, state, ""
@@ -182,11 +181,16 @@ def run_learning_plan_interface(name: str, goals: str, lang_choice: str) -> str:
     return buffer.getvalue()
 
 
-def run_learning_plan_from_quiz(name: str, state: dict) -> str:
+def run_learning_plan_from_quiz(name: str, state: dict, lang_choice: str) -> str:
     """Generate a learning plan based on completed quiz results."""
     if not state or not state.get("scores"):
         return "No quiz results available."
-    language = state.get("language") or LanguageHandler.choose_or_detect(name)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = (
+        code
+        if code != "auto"
+        else state.get("language") or LanguageHandler.choose_or_detect(name)
+    )
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         generate_learning_plan_from_quiz(name, state["scores"], language)
@@ -319,7 +323,7 @@ def build_interface() -> gr.Blocks:
                 )
                 plan_quiz_btn.click(
                     run_learning_plan_from_quiz,
-                    [quiz_name, quiz_state],
+                    [quiz_name, quiz_state, lang_select],
                     plan_quiz_output,
                 )
 
