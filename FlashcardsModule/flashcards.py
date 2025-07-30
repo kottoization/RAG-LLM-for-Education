@@ -159,8 +159,10 @@ class FlashcardSet:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.to_dict_list(), f, indent=4, ensure_ascii=False)
             print(f"💾 Flashcards saved to {path}")
+            return path
         except Exception as e:
             print(f"❌ Failed to save flashcards: {e}")
+            return None
 
     @staticmethod
     def load_from_file(path: str):
@@ -182,3 +184,20 @@ class FlashcardSet:
         Returns list of flashcards as list of dicts (e.g. for JSON API).
         """
         return [fc.to_dict() for fc in self.flashcards]
+
+
+def list_saved_flashcard_files(base_dir: str = "data/flashcards/") -> list[str]:
+    """Return paths to all saved flashcard JSON files."""
+    try:
+        if not os.path.isdir(base_dir):
+            return []
+        files = [
+            os.path.join(base_dir, f)
+            for f in os.listdir(base_dir)
+            if f.endswith(".json")
+        ]
+        files.sort()
+        return files
+    except Exception as e:
+        print(f"❌ Failed to list flashcard files: {e}")
+        return []

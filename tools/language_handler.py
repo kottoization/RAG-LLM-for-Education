@@ -7,8 +7,29 @@ from deep_translator import GoogleTranslator
 CONFIG_PATH = os.path.join("data", "user_config.json")
 
 SUPPORTED_LANGUAGES = [
-    "auto", "en", "pl", "cs", "sk", "de", "fr", "es", "it", "pt",
-    "ru", "uk", "nl", "sv", "fi", "no", "da", "tr", "ja", "ko", "zh", "ar", "he"
+    "auto",
+    "en",
+    "pl",
+    "cs",
+    "sk",
+    "de",
+    "fr",
+    "es",
+    "it",
+    "pt",
+    "ru",
+    "uk",
+    "nl",
+    "sv",
+    "fi",
+    "no",
+    "da",
+    "tr",
+    "ja",
+    "ko",
+    "zh",
+    "ar",
+    "he"
 ]
 
 LANGUAGE_LABELS = {

@@ -10,14 +10,19 @@ import gradio as gr
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from AgentModule import create_agent
-from QuizModule import generate_quiz, generate_learning_plan_from_quiz, prepare_quiz_questions
+from AgentModule.edu_agent import run_agent
+from QuizModule import (
+    generate_quiz,
+    generate_learning_plan_from_quiz,
+    prepare_quiz_questions,
+)
 from LearningPlanModule import LearningPlan
 from SummaryModule import StudySummaryGenerator
-from FlashcardsModule import FlashcardSet
+from FlashcardsModule import FlashcardSet, list_saved_flashcard_files
 from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
 
-dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
+dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv(dotenv_path)
 
 warnings.filterwarnings(
@@ -46,6 +51,9 @@ CSS = """
   background-color: #f0f0f0;
   border-radius: 8px;
 }
+#chatbot .message.bot.fallback {
+  background-color: #fff9c4;
+}
 """
 
 
@@ -67,8 +75,15 @@ def respond(
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        result = agent.invoke({"input": message, "language": language})["output"]
+        result, used_fallback = run_agent(message, executor=agent, return_details=True)
         result = LanguageHandler.ensure_language(result, language)
+        if used_fallback:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana przez LLM, sprawdź jej poprawność &#10071;",
+                language,
+            )
+            result = f"<div class='fallback'>{notice}<br>{result}</div>"
+
 
     # replace the placeholder with the actual response
     history[-1] = (message, result)
@@ -142,7 +157,9 @@ def _compile_results(state: dict) -> str:
         lines.append(f"{topic}: {corr}/{tot} ({perc:.2f}%)")
         total_questions += tot
     if lines:
-        overall = sum((corr / tot) * 100 if tot else 0 for corr, tot in state["scores"].values())
+        overall = sum(
+            (corr / tot) * 100 if tot else 0 for corr, tot in state["scores"].values()
+        )
         overall /= len(state["scores"])
         lines.append(f"\nOverall Score: {total_correct}/{total_questions} ({overall:.2f}%)")
     result = "\n".join(lines)
@@ -175,16 +192,18 @@ def run_learning_plan_from_quiz(name: str, state: dict) -> str:
         generate_learning_plan_from_quiz(name, state["scores"], language)
     return buffer.getvalue()
 
-def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tuple[list[dict], str]:
-    """Generate flashcards from a topic."""
+def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str):
+    """Generate flashcards from a topic and return data for the UI."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     flashcards = FlashcardSet(topic)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag)
-        flashcards.save_to_file()
-    return flashcards.to_dict_list(), buffer.getvalue()
+        path = flashcards.save_to_file()
+    files = list_saved_flashcard_files()
+    dropdown_update = gr.Dropdown.update(choices=files, value=path)
+    return flashcards.to_dict_list(), buffer.getvalue(), dropdown_update
 
 def run_flashcards_review(path: str) -> str:
     """Review flashcards from a saved file (auto answer)."""
@@ -238,7 +257,10 @@ def build_interface() -> gr.Blocks:
             with gr.TabItem("Chat with the bot"):
                 chatbot = gr.Chatbot(elem_id="chatbot")
                 with gr.Row():
-                    msg = gr.Textbox(placeholder="Type your message and press enter...", container=False)
+                    msg = gr.Textbox(
+                        placeholder="Type your message and press enter...",
+                        container=False,
+                    )
                     send = gr.Button("Send", variant="primary")
                     clear = gr.Button("Clear")
                 logs = gr.Textbox(label="Terminal output", lines=8)
@@ -267,12 +289,36 @@ def build_interface() -> gr.Blocks:
                 plan_quiz_output = gr.Textbox(label="Plan Output", lines=10)
                 quiz_state = gr.State()
 
-                start_btn.click(start_quiz, [quiz_subject, quiz_rag, lang_select], [quiz_question, quiz_state, quiz_result])
-                btn_a.click(lambda st: answer_quiz("a", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_b.click(lambda st: answer_quiz("b", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_c.click(lambda st: answer_quiz("c", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_d.click(lambda st: answer_quiz("d", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                plan_quiz_btn.click(run_learning_plan_from_quiz, [quiz_name, quiz_state], plan_quiz_output)
+                start_btn.click(
+                    start_quiz,
+                    [quiz_subject, quiz_rag, lang_select],
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_a.click(
+                    lambda st: answer_quiz("a", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_b.click(
+                    lambda st: answer_quiz("b", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_c.click(
+                    lambda st: answer_quiz("c", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_d.click(
+                    lambda st: answer_quiz("d", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                plan_quiz_btn.click(
+                    run_learning_plan_from_quiz,
+                    [quiz_name, quiz_state],
+                    plan_quiz_output,
+                )
 
             # Learning plan tab
             with gr.TabItem("Learning plan"):
@@ -290,13 +336,27 @@ def build_interface() -> gr.Blocks:
                     fc_gen_btn = gr.Button("Generate")
                     fc_cards = gr.JSON(label="Flashcards")
                     fc_logs = gr.Textbox(label="Logs", lines=4)
-                    fc_gen_btn.click(run_flashcards_generate, [fc_topic, fc_rag, lang_select], [fc_cards, fc_logs])
 
                 with gr.Accordion("Review flashcards", open=False):
-                    fc_path = gr.Textbox(label="Path to flashcards JSON")
+                    fc_file = gr.Dropdown(
+                        label="Saved flashcards",
+                        choices=list_saved_flashcard_files(),
+                    )
+                    fc_refresh = gr.Button("Refresh list")
                     fc_rev_btn = gr.Button("Review")
                     fc_review_out = gr.Textbox(label="Review Output", lines=10)
-                    fc_rev_btn.click(run_flashcards_review, fc_path, fc_review_out)
+
+                fc_gen_btn.click(
+                    run_flashcards_generate,
+                    [fc_topic, fc_rag, lang_select],
+                    [fc_cards, fc_logs, fc_file],
+                )
+                fc_refresh.click(
+                    lambda: gr.Dropdown.update(choices=list_saved_flashcard_files()),
+                    None,
+                    fc_file,
+                )
+                fc_rev_btn.click(run_flashcards_review, fc_file, fc_review_out)
 
             # Summary tab
             with gr.TabItem("Summary"):

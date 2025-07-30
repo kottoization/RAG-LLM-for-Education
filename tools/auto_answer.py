@@ -1,8 +1,9 @@
 """Automatic question answering helper."""
+
 from __future__ import annotations
 
 from typing import Optional
-from AgentModule.edu_agent import create_agent, AgentExecutor
+from AgentModule.edu_agent import create_agent, run_agent, AgentExecutor
 from tools.language_handler import LanguageHandler
 
 
@@ -69,8 +70,14 @@ def auto_answer(text: str, agent: Optional[AgentExecutor] = None) -> bool:
     if looks_like_question(text):
         agent = agent or create_agent()
         language = LanguageHandler.choose_or_detect(text)
-        answer = agent.invoke({"input": text, "language": language})["output"]
+        answer, used_fallback = run_agent(text, executor=agent, return_details=True)
         answer = LanguageHandler.ensure_language(answer, language)
-        print(f"\n\U0001F916 Agent Answer:\n{answer}\n")
+        if used_fallback:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana przez LLM, sprawdź jej poprawność",
+                language,
+            )
+            answer = f"{notice}\n{answer}"
+        print(f"\n\U0001f916 Agent Answer:\n{answer}\n")
         return True
     return False
