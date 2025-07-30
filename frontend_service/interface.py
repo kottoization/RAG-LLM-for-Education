@@ -207,12 +207,17 @@ def run_flashcards_review(path: str) -> str:
     return buffer.getvalue()
 
 
-def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
+def run_summary_interface(topic: str, use_rag: bool, dense: bool, lang_choice: str) -> str:
     """Generate a detailed study summary."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
-    return summarizer.generate_summary(topic, language=language, use_rag=use_rag)
+    return summarizer.generate_summary(
+        topic,
+        language=language,
+        use_rag=use_rag,
+        dense=dense,
+    )
 
 
 def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
@@ -302,9 +307,10 @@ def build_interface() -> gr.Blocks:
             with gr.TabItem("Summary"):
                 sum_topic = gr.Textbox(label="Topic or material")
                 sum_rag = gr.Checkbox(label="Use RAG", value=False)
+                sum_dense = gr.Checkbox(label="Dense summary", value=False)
                 sum_btn = gr.Button("Generate Summary")
                 sum_output = gr.Textbox(label="Summary", lines=10)
-                sum_btn.click(run_summary_interface, [sum_topic, sum_rag, lang_select], sum_output)
+                sum_btn.click(run_summary_interface, [sum_topic, sum_rag, sum_dense, lang_select], sum_output)
 
             # Cheat sheet tab
             with gr.TabItem("Cheat sheet"):

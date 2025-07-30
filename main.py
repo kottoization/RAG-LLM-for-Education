@@ -165,7 +165,14 @@ def main_menu():
             # pass retriever to summary
             summarizer = StudySummaryGenerator(retriever=retriever)
             use_rag = prompt_input("Enrich summary with your documents? (y/N): ").strip().lower()=="y"
-            summary = summarizer.generate_summary(topic, language=language, use_rag=use_rag, retriever=retriever)
+            dense = prompt_input("Use dense summarization? (y/N): ").strip().lower()=="y"
+            summary = summarizer.generate_summary(
+                topic,
+                language=language,
+                use_rag=use_rag,
+                retriever=retriever,
+                dense=dense,
+            )
             print("\n📘 Summary:\n")
             print(summary)
 
