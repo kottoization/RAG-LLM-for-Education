@@ -10,7 +10,7 @@ class CheatSheetGenerator:
     Generates concise exam-style cheat sheets with only the most critical facts, formulas, and definitions.
     Ideal for rapid last-minute review. Use the Pareto principle.
     """
-    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.3,retriever=None):
+    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.3, retriever=None):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
         self.retriever = retriever
 
