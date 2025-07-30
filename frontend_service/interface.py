@@ -101,7 +101,6 @@ def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict
         "index": 0,
         "scores": {},
         "correct_total": 0,
-        "language": language,
     }
     first_q = _format_question(questions[0])
     return first_q, state, ""
@@ -162,7 +161,8 @@ def run_learning_plan_interface(name: str, goals: str, lang_choice: str) -> str:
         plan.generate_plan_from_prompt(user_input)
         plan.display_plan()
         plan.save_to_file()
-    return buffer.getvalue()
+    output = buffer.getvalue()
+    return LanguageHandler.ensure_language(output, language)
 
 
 def run_learning_plan_from_quiz(name: str, state: dict) -> str:
@@ -173,7 +173,8 @@ def run_learning_plan_from_quiz(name: str, state: dict) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         generate_learning_plan_from_quiz(name, state["scores"], language)
-    return buffer.getvalue()
+    output = buffer.getvalue()
+    return LanguageHandler.ensure_language(output, language)
 
 def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tuple[list[dict], str]:
     """Generate flashcards from a topic."""
@@ -184,7 +185,8 @@ def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tupl
     with redirect_stdout(buffer):
         flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag)
         flashcards.save_to_file()
-    return flashcards.to_dict_list(), buffer.getvalue()
+    logs = LanguageHandler.ensure_language(buffer.getvalue(), language)
+    return flashcards.to_dict_list(), logs
 
 def run_flashcards_review(path: str) -> str:
     """Review flashcards from a saved file (auto answer)."""
@@ -192,6 +194,7 @@ def run_flashcards_review(path: str) -> str:
     if not flashcards:
         return "Failed to load flashcards."
     buffer = io.StringIO()
+    language = LanguageHandler.choose_or_detect(flashcards.topic)
     import builtins
 
     def _fake_input(prompt: str = ""):
@@ -204,7 +207,8 @@ def run_flashcards_review(path: str) -> str:
             flashcards.run_cli_review()
         finally:
             builtins.input = original_input
-    return buffer.getvalue()
+    output = buffer.getvalue()
+    return LanguageHandler.ensure_language(output, language)
 
 
 def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
@@ -212,7 +216,8 @@ def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
-    return summarizer.generate_summary(topic, language=language, use_rag=use_rag)
+    summary = summarizer.generate_summary(topic, language=language, use_rag=use_rag)
+    return LanguageHandler.ensure_language(summary, language)
 
 
 def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
@@ -220,7 +225,8 @@ def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     generator = CheatSheetGenerator()
-    return generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
+    cheatsheet = generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
+    return LanguageHandler.ensure_language(cheatsheet, language)
 
 
 def build_interface() -> gr.Blocks:
