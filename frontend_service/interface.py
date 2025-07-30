@@ -62,6 +62,9 @@ CSS = """
   min-height: 120px;
   font-size: 1.1em;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #flashcard-buttons {
   display: grid;
