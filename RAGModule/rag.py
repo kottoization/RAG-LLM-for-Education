@@ -5,6 +5,7 @@ from typing import List, Optional
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+
 try:  # Prefer standalone package but fall back for compatibility
     from langchain_chroma import Chroma
 except ImportError:  # pragma: no cover - legacy support
@@ -12,6 +13,8 @@ except ImportError:  # pragma: no cover - legacy support
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI
+from langchain.retrievers import MultiQueryRetriever
+
 
 class RAGHandler:
     """
@@ -21,15 +24,16 @@ class RAGHandler:
       - build/load Chroma vectorstore
       - semantic search and QA chains
     """
+
     def __init__(
         self,
         rag_files_path: str = "data/RAG_files",
         persist_directory: str = "data/chroma_db",
-        #embedding_model: str = "text-embedding-3-large", TODO: use latest embedding model if needed, for now using the cheaper one
+        # embedding_model: str = "text-embedding-3-large", TODO: use latest embedding model if needed, for now using the cheaper one
         embedding_model: str = "text-embedding-ada-002",
         llm_model: str = "gpt-3.5-turbo",
         chunk_size: int = 1000,
-        chunk_overlap: int = 100
+        chunk_overlap: int = 100,
     ):
         # 📂 Paths and basic setup
         self.rag_path = Path(rag_files_path)
@@ -40,14 +44,12 @@ class RAGHandler:
 
         # ✂️ Text splitter for chunking documents
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
 
         # 📈 Embedding model with lazy init
-        #self.embeddings = OpenAIEmbeddings(model=embedding_model)
+        # self.embeddings = OpenAIEmbeddings(model=embedding_model)
         self.embeddings: Optional[OpenAIEmbeddings] = None
-        
 
         # 🤖 LLM for QA
         # self.llm = ChatOpenAI(model=llm_model, temperature=0.2)
@@ -95,9 +97,7 @@ class RAGHandler:
         return self.text_splitter.split_documents(docs)
 
     def build_vectorstore(
-        self,
-        docs: Optional[List[Document]] = None,
-        persist: bool = True
+        self, docs: Optional[List[Document]] = None, persist: bool = True
     ) -> Chroma:
         """
         Build (or rebuild) the Chroma vectorstore from provided docs (or ingest folder).
@@ -109,9 +109,7 @@ class RAGHandler:
 
         # ⚡ Build the vectorstore
         vectordb = Chroma.from_documents(
-            chunks,
-            self.embeddings,
-            persist_directory=self.persist_dir
+            chunks, self.embeddings, persist_directory=self.persist_dir
         )
 
         # 💾 Persist to disk for future loads
@@ -146,12 +144,13 @@ class RAGHandler:
                 self.vectordb = self.build_vectorstore()
         return self.vectordb
 
-    def semantic_search(self, query: str, k: int = 3) -> List[Document]:
+    def semantic_search(
+        self, query: str, k: int = 3, multi_query: bool = False
+    ) -> List[Document]:
         """
         Return top-k document chunks relevant to the query.
         """
-        db = self.load_vectorstore()
-        retriever = db.as_retriever(search_kwargs={"k": k})  # 🔍
+        retriever = self.get_retriever(k=k, multi_query=multi_query)
         return retriever.get_relevant_documents(query)
 
     def get_context(self, query: str, k: int = 3) -> str:
@@ -161,37 +160,34 @@ class RAGHandler:
         docs = self.semantic_search(query, k=k)
         return "\n\n".join([doc.page_content for doc in docs])  # 📚
 
-    def answer(self, query: str, k: int = 3) -> str:
+    def answer(self, query: str, k: int = 3, multi_query: bool = False) -> str:
         """
         Perform a simple RetrievalQA: retrieve k docs and answer with LLM.
         """
         self._init_llm()
-        db = self.load_vectorstore()
+        retriever = self.get_retriever(k=k, multi_query=multi_query)
         qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=db.as_retriever(search_kwargs={"k": k})
+            llm=self.llm, chain_type="stuff", retriever=retriever
         )  # 🤖
         return qa_chain.run(query)
 
-    def get_retriever(self, k: int = 5):
+    def get_retriever(self, k: int = 5, multi_query: bool = False):
         """Return a retriever over the loaded vector store."""
         db = self.load_vectorstore()
+        if multi_query:
+            self._init_llm()
+            return MultiQueryRetriever.from_llm(
+                retriever=db.as_retriever(search_kwargs={"k": k}), llm=self.llm
+            )
         return db.as_retriever(search_kwargs={"k": k})
 
-    def chat(
-        self,
-        chat_history: List[dict],
-        query: str,
-        k: int = 3
-    ) -> dict:
+    def chat(self, chat_history: List[dict], query: str, k: int = 3) -> dict:
         """
         ConversationalRetrievalChain: maintain context + retrieve.
         """
         self._init_llm()
         db = self.load_vectorstore()
         conv_chain = ConversationalRetrievalChain.from_llm(
-            llm=self.llm,
-            retriever=db.as_retriever(search_kwargs={"k": k})
+            llm=self.llm, retriever=db.as_retriever(search_kwargs={"k": k})
         )  # 🗣️
         return conv_chain({"question": query, "chat_history": chat_history})
