@@ -1,6 +1,8 @@
 import io
 import os
 import sys
+import shutil
+from pathlib import Path
 from contextlib import redirect_stdout
 import warnings
 
@@ -16,6 +18,7 @@ from SummaryModule import StudySummaryGenerator
 from FlashcardsModule import FlashcardSet
 from CheatSheetModule import CheatSheetGenerator
 from tools.language_handler import LanguageHandler
+from RAGModule import RAGHandler
 
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
 load_dotenv(dotenv_path)
@@ -223,6 +226,22 @@ def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str
     return generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
 
 
+def upload_rag_document(file_obj) -> str:
+    """Save uploaded file and index it into the vector store."""
+    if file_obj is None:
+        return "No file provided."
+    dest_dir = Path("data/RAG_files")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / Path(file_obj.name).name
+    shutil.move(file_obj.name, dest)
+    rag = RAGHandler()
+    try:
+        rag.index_document(str(dest))
+        return f"Indexed {dest.name}"
+    except Exception as e:
+        return f"Failed to index file: {e}"
+
+
 def build_interface() -> gr.Blocks:
     """Create the Gradio UI replicating the CLI menu."""
     with gr.Blocks(css=CSS, theme=gr.themes.Soft()) as demo:
@@ -313,6 +332,13 @@ def build_interface() -> gr.Blocks:
                 cs_btn = gr.Button("Generate Cheat Sheet")
                 cs_output = gr.Textbox(label="Cheat Sheet", lines=10)
                 cs_btn.click(run_cheatsheet_interface, [cs_topic, cs_rag, lang_select], cs_output)
+
+            # Upload file tab
+            with gr.TabItem("Upload document"):
+                upload_file = gr.File(label="Drop a TXT or PDF file here")
+                upload_btn = gr.Button("Upload & Index")
+                upload_log = gr.Textbox(label="Status")
+                upload_btn.click(upload_rag_document, upload_file, upload_log)
 
     return demo
 

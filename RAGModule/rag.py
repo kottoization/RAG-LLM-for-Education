@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from typing import List, Optional
 
@@ -145,6 +146,30 @@ class RAGHandler:
             else:
                 self.vectordb = self.build_vectorstore()
         return self.vectordb
+
+    def index_document(self, path: str, persist: bool = True) -> str:
+        """Add a single TXT or PDF file to the vector store."""
+        self._init_embeddings()
+        db = self.load_vectorstore()
+        src = Path(path)
+        dest = self.rag_path / src.name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if src.resolve() != dest.resolve():
+            shutil.copy(src, dest)
+
+        if dest.suffix.lower() == ".txt":
+            loader = TextLoader(str(dest))
+        elif dest.suffix.lower() == ".pdf":
+            loader = PyPDFLoader(str(dest))
+        else:
+            raise ValueError("Unsupported file type: " + dest.suffix)
+
+        docs = loader.load()
+        chunks = self.split(docs)
+        db.add_documents(chunks)
+        if persist:
+            db.persist()
+        return str(dest)
 
     def semantic_search(self, query: str, k: int = 3) -> List[Document]:
         """

@@ -10,6 +10,8 @@ from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 from RAGModule import RAGHandler
 import os
+import shutil
+from pathlib import Path
 import warnings
 from langchain_core._api import LangChainDeprecationWarning
 
@@ -98,7 +100,8 @@ def main_menu():
         print("5. Flashcards: Review from file")
         print("6. Generate TL;DR Summary")
         print("7. Generate Cheat Sheet")
-        print("8. Exit")
+        print("8. Index a RAG document")
+        print("9. Exit")
 
         choice = prompt_input("Enter the number of your choice: ").strip()
 
@@ -180,7 +183,24 @@ def main_menu():
             print(cheatsheet)
 
 
-        elif choice in ("8", "q", "quit"):
+        elif choice == "8":
+            file_path = prompt_input("Path to TXT or PDF file: ")
+            if not os.path.isfile(file_path):
+                print("File not found.")
+            else:
+                rag = RAGHandler()
+                dest_dir = Path("data/RAG_files")
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                dest = dest_dir / os.path.basename(file_path)
+                shutil.copy(file_path, dest)
+                try:
+                    rag.index_document(str(dest))
+                    retriever = rag.get_retriever(k=5)
+                    print(f"Indexed {dest}")
+                except Exception as e:
+                    print(f"Failed to index file: {e}")
+
+        elif choice in ("9", "q", "quit"):
             print("Goodbye!")
             break
 

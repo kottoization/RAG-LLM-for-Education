@@ -46,6 +46,7 @@ python main.py --cli
 
 The menu lets you chat with the assistant, generate quizzes, summaries, flashcards and learning plans.
 If RAG documents are indexed (see `RAGModule`), some tools can enrich answers with your own files.
+You can now index a new text or PDF file directly from the menu using the "Index a RAG document" option.
 
 ### Gradio Frontend
 The application now launches the Gradio interface by default:
@@ -61,6 +62,7 @@ python frontend_service/main.py
 ```
 
 Both entry points import the same agent used by the optional CLI so you get identical behaviour in the browser.
+Use the **Upload document** tab in the web UI to add a file to the RAG index. Uploaded files are saved under `data/RAG_files`.
 
 ## Project Structure
 - `AgentModule/` – creation of the LangChain agent and reusable tools
