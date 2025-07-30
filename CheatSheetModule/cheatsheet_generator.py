@@ -14,27 +14,34 @@ class CheatSheetGenerator:
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
         self.retriever = retriever
 
+        # Based on the RStudio cheatsheet guidelines which suggest designing
+        # materials in a clear three or four column layout for readability
+        # (see https://github.com/rstudio/cheatsheets/blob/main/.github/CONTRIBUTING.md)
         self.prompt = PromptTemplate.from_template(
             """
 {context}
-You are an assistant that generates compact, high-quality cheat sheets to help students quickly review before exams.
+You are an assistant that generates compact, exam-focused cheat sheets.
 
-Your task is to generate a **1-page cheat sheet** for the topic:
+Create a concise **one page** cheat sheet for the topic:
 "{input}"
 
-Include:
-- Only the most essential definitions, formulas, key terms
-- Structured layout with headers, bullet points, and highlights
-- No detailed explanations – just what the student must memorize
-- Formulas should be clearly presented
-- Use markdown-style formatting (headers, bullet lists)
+Structure the sheet using these sections:
+### Key Terms
+- short bullet points (max ~12 words)
 
-Written content should be helpful for someone who does not know the details and answer to given questions.
-Focus on making the cheat sheet high quality and easy to use when faces a difficult question that one is not familiar with.
-DO NOT include examples or commentary.
-Only return the structured content.
+### Must-Know Formulas
+- clear formulas or equations only
 
-Respond in this language only: {language} 
+### Quick Facts
+- bite-size facts useful for revision
+
+Guidelines:
+- Keep bullet lists extremely concise
+- Use markdown headers and bullet lists
+- Avoid long paragraphs, examples or commentary
+- No images – text only for accessibility
+
+Respond only in {language}.
 """
         )
 
