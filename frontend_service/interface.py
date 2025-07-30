@@ -82,6 +82,7 @@ CSS = """
 #flashcard-container .progress-bar-wrap,
 #flashcard-container .eta-bar {
   display: none !important;
+}
 #chatbot .message.bot.fallback {
   background-color: #fff9c4;
 }
