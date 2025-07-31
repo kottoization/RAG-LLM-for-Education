@@ -74,7 +74,7 @@ class FlashcardSet:
             else:
                 rag = RAGHandler()
                 rag.load_vectorstore()
-                ctx = rag.get_context(inputs["topic_prompt"], k=3)
+                ctx = rag.get_context(inputs["topic_prompt"], k=3, use_rerank=True)
             return {**inputs, "context": ctx}
 
         def _skip_context(inputs):

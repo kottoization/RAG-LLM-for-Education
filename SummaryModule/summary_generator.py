@@ -74,7 +74,7 @@ Respond in {language}.
             else:
                 rag = RAGHandler()
                 rag.load_vectorstore()
-                ctx = rag.get_context(inputs["input"], k=3)
+                ctx = rag.get_context(inputs["input"], k=3, use_rerank=True)
             inputs["input"] = f"{ctx}\n\n### Topic:\n{inputs['input']}"
             return inputs
 

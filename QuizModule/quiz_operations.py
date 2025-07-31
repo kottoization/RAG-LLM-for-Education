@@ -23,7 +23,7 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
         else:
             rag = RAGHandler()
             rag.load_vectorstore()
-            docs = rag.semantic_search(subject, k=3)
+            docs = rag.semantic_search(subject, k=3, use_rerank=True)
         context = "\n\n".join([doc.page_content for doc in docs])
 
     prompt_subject = subject
@@ -56,7 +56,9 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
         else:
             rag = RAGHandler()
             rag.load_vectorstore()
-            context_chain = RunnableLambda(lambda inputs: rag.get_context(inputs["topic"], k=3))
+            context_chain = RunnableLambda(
+                lambda inputs: rag.get_context(inputs["topic"], k=3, use_rerank=True)
+            )
         prompt_chain = RunnableLambda(
             lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
         )
