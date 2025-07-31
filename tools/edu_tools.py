@@ -66,7 +66,7 @@ def document_search(query: str) -> str:
     """Answer a question using documents indexed by the system."""
     rag = _get_rag()
     try:
-        return rag.answer(query)
+        return rag.answer(query, use_rerank=True)
     except Exception as e:  # pragma: no cover - LLM errors
         return f"Error using RAG: {e}"
 
