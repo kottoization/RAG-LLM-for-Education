@@ -118,20 +118,26 @@ class RAGHandler:
     def build_vectorstore(
         self, docs: Optional[List[Document]] = None, persist: bool = True
     ) -> Chroma:
-        """
-        Build (or rebuild) the Chroma vectorstore from provided docs (or ingest folder).
-        """
+        """Build (or rebuild) the Chroma vectorstore from provided docs."""
         self._init_embeddings()
         if docs is None:
             docs = self.ingest()
         chunks = self.split(docs)
 
-        # ⚡ Build the vectorstore
-        vectordb = Chroma.from_documents(
-            chunks, self.embeddings, persist_directory=self.persist_dir
-        )
+        try:
+            vectordb = Chroma.from_documents(
+                chunks, self.embeddings, persist_directory=self.persist_dir
+            )
+        except Exception as e:
+            # Rebuild from scratch if we hit errors during construction
+            import shutil
 
-        # 💾 Persist to disk for future loads
+            print(f"⚠️ Error building vectorstore: {e}. Recreating DB...")
+            shutil.rmtree(self.persist_dir, ignore_errors=True)
+            vectordb = Chroma.from_documents(
+                chunks, self.embeddings, persist_directory=self.persist_dir
+            )
+
         if persist:
             vectordb.persist()
 
@@ -146,18 +152,27 @@ class RAGHandler:
         if self.vectordb is None:
             db_path = Path(self.persist_dir) / "chroma.sqlite3"
 
-            # Attempt to load existing DB if it exists
             if db_path.exists():
-                self.vectordb = Chroma(
-                    embedding_function=self.embeddings,
-                    persist_directory=self.persist_dir,
-                )
-
                 try:
-                    # If no embeddings are stored, rebuild
-                    if self.vectordb._collection.count() == 0:
+                    self.vectordb = Chroma(
+                        embedding_function=self.embeddings,
+                        persist_directory=self.persist_dir,
+                    )
+
+                    try:
+                        # Empty or inconsistent collection -> rebuild
+                        if self.vectordb._collection.count() == 0:
+                            raise ValueError("empty collection")
+                    except Exception:
                         self.vectordb = self.build_vectorstore()
-                except Exception:
+                except Exception as e:
+                    # Corrupted DB - remove and rebuild
+                    import shutil
+
+                    print(
+                        f"⚠️ Error loading vectorstore: {e}. Recreating DB..."
+                    )
+                    shutil.rmtree(self.persist_dir, ignore_errors=True)
                     self.vectordb = self.build_vectorstore()
             else:
                 self.vectordb = self.build_vectorstore()
