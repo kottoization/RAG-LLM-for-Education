@@ -56,8 +56,7 @@ class RAGHandler:
         self.llm: Optional[ChatOpenAI] = None
 
         # 🔍 Cross-encoder reranker (lazy)
-        self.reranker: Optional[
-        ] = None
+        self.reranker: Optional[CrossEncoder] = None
         self.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
         # 🔄 Placeholder for the vectorstore
