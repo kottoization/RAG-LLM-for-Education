@@ -65,7 +65,8 @@ Both entry points import the same agent used by the optional CLI so you get iden
 ## Project Structure
 - `AgentModule/` – creation of the LangChain agent and reusable tools
 - `RAGModule/` – utilities for loading documents and building a Chroma vector store
-- `QuizModule/`, `FlashcardsModule/`, `LearningPlanModule/`, `SummaryModule/`, `CheatSheetModule/` – content generation helpers
+- `QuizModule/`, `FlashcardsModule/`, `LearningPlanModule/`, `SummaryModule/`, `CheatSheetModule/` – content generation helpers. The cheat sheet tool now
+  follows a structured three-section layout inspired by the [RStudio cheatsheet guidelines](https://github.com/rstudio/cheatsheets/blob/main/.github/CONTRIBUTING.md) for clearer review notes.
 - `frontend_service/` – Gradio based chat interface
 - `data/` – example data and vector store persistence
 

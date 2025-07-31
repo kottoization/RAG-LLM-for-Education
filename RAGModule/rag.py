@@ -3,8 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from sentence_transformers import CrossEncoder
-
-from langchain_community.document_loaders import TextLoader, PyPDFLoader
+from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 
@@ -57,7 +56,8 @@ class RAGHandler:
         self.llm: Optional[ChatOpenAI] = None
 
         # 🔍 Cross-encoder reranker (lazy)
-        self.reranker: Optional[CrossEncoder] = None
+        self.reranker: Optional[
+        ] = None
         self.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
         # 🔄 Placeholder for the vectorstore
@@ -99,6 +99,14 @@ class RAGHandler:
                 docs.extend(loader.load())
             except Exception as e:
                 print(f"❌ Error loading {pdf_path}: {e}")
+
+        # 📄 Load CSV files (search recursively)
+        for csv_path in self.rag_path.rglob("*.csv"):
+            try:
+                loader = CSVLoader(str(csv_path))
+                docs.extend(loader.load())
+            except Exception as e:
+                print(f"❌ Error loading {csv_path}: {e}")
 
         return docs
 

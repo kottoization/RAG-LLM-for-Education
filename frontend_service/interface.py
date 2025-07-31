@@ -1,23 +1,25 @@
 import io
 import os
+import random
 import sys
-from contextlib import redirect_stdout
 import warnings
+from contextlib import redirect_stdout
 
+import gradio as gr
 from dotenv import load_dotenv
 from langchain_core._api import LangChainDeprecationWarning
-import gradio as gr
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from AgentModule import create_agent
-from QuizModule import generate_quiz, generate_learning_plan_from_quiz, prepare_quiz_questions
-from LearningPlanModule import LearningPlan
-from SummaryModule import StudySummaryGenerator
-from FlashcardsModule import FlashcardSet
+from AgentModule.edu_agent import run_agent
 from CheatSheetModule import CheatSheetGenerator
+from FlashcardsModule import FlashcardSet
+from LearningPlanModule import LearningPlan
+from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
+from SummaryModule import StudySummaryGenerator
 from tools.language_handler import LanguageHandler
 
-dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
+dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv(dotenv_path)
 
 warnings.filterwarnings(
@@ -46,6 +48,47 @@ CSS = """
   background-color: #f0f0f0;
   border-radius: 8px;
 }
+#flashcard-container {
+  background-color: #fffbe6;
+  border: 1px solid #ffd580;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 500px;
+  margin: auto;
+  text-align: center;
+  width: fit-content;
+}
+#flashcard-content {
+  min-height: 120px;
+  font-size: 1.1em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#flashcard-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 4px;
+  justify-content: center;
+}
+#flashcard-buttons button {
+  width: 48px;
+  margin: 0;
+}
+#flashcard-counter {
+  font-weight: bold;
+  margin-top: 8px;
+}
+#flashcard-container .wrap,
+#flashcard-container .progress-text,
+#flashcard-container .progress-bar-wrap,
+#flashcard-container .eta-bar {
+  display: none !important;
+}
+#chatbot .message.bot.fallback {
+  background-color: #fff9c4;
+}
 """
 
 
@@ -67,8 +110,14 @@ def respond(
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        result = agent.invoke({"input": message, "language": language})["output"]
+        result, used_fallback = run_agent(message, executor=agent, return_details=True)
         result = LanguageHandler.ensure_language(result, language)
+        if used_fallback:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana przez LLM, sprawdź jej poprawność &#10071;",
+                language,
+            )
+            result = f"<div class='fallback'>{notice}<br>{result}</div>"
 
     # replace the placeholder with the actual response
     history[-1] = (message, result)
@@ -101,7 +150,6 @@ def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict
         "index": 0,
         "scores": {},
         "correct_total": 0,
-        "language": language,
     }
     first_q = _format_question(questions[0])
     return first_q, state, ""
@@ -142,9 +190,13 @@ def _compile_results(state: dict) -> str:
         lines.append(f"{topic}: {corr}/{tot} ({perc:.2f}%)")
         total_questions += tot
     if lines:
-        overall = sum((corr / tot) * 100 if tot else 0 for corr, tot in state["scores"].values())
+        overall = sum(
+            (corr / tot) * 100 if tot else 0 for corr, tot in state["scores"].values()
+        )
         overall /= len(state["scores"])
-        lines.append(f"\nOverall Score: {total_correct}/{total_questions} ({overall:.2f}%)")
+        lines.append(
+            f"\nOverall Score: {total_correct}/{total_questions} ({overall:.2f}%)"
+        )
     result = "\n".join(lines)
     lang = state.get("language", "auto")
     return LanguageHandler.ensure_language(result, lang)
@@ -165,46 +217,113 @@ def run_learning_plan_interface(name: str, goals: str, lang_choice: str) -> str:
     return buffer.getvalue()
 
 
-def run_learning_plan_from_quiz(name: str, state: dict) -> str:
+def run_learning_plan_from_quiz(name: str, state: dict, lang_choice: str) -> str:
     """Generate a learning plan based on completed quiz results."""
     if not state or not state.get("scores"):
         return "No quiz results available."
-    language = state.get("language") or LanguageHandler.choose_or_detect(name)
+    code = LanguageHandler.code_from_display(lang_choice)
+    language = (
+        code
+        if code != "auto"
+        else state.get("language") or LanguageHandler.choose_or_detect(name)
+    )
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         generate_learning_plan_from_quiz(name, state["scores"], language)
     return buffer.getvalue()
 
-def run_flashcards_generate(topic: str, use_rag: bool, lang_choice: str) -> tuple[list[dict], str]:
-    """Generate flashcards from a topic."""
+
+def _init_flashcard_state(cards: list[dict]) -> dict:
+    """Return a new flashcard navigation state."""
+    return {"cards": cards, "index": 0, "side": "question"}
+
+
+def _render_flashcard(state: dict) -> str:
+    """Return the currently visible side of the flashcard."""
+    if not state or not state.get("cards"):
+        return ""
+    card = state["cards"][state["index"]]
+    side = state.get("side", "question")
+    return card.get(side, "")
+
+
+def run_flashcards_generate(
+    topic: str, use_rag: bool, lang_choice: str
+) -> tuple[str, dict, str, str]:
+    """Generate flashcards from a topic and prepare viewer state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     flashcards = FlashcardSet(topic)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        flashcards.generate_from_prompt(topic_prompt=topic, language=language, use_rag=use_rag)
-        flashcards.save_to_file()
-    return flashcards.to_dict_list(), buffer.getvalue()
+        flashcards.generate_from_prompt(
+            topic_prompt=topic, language=language, use_rag=use_rag
+        )
+        path = flashcards.save_to_file()
+    logs = buffer.getvalue()
+    if path:
+        logs += f"\nSaved to: {path}"
+    cards = flashcards.to_dict_list()
+    state = _init_flashcard_state(cards)
+    first = _render_flashcard(state)
+    progress = f"1/{len(cards)}" if cards else "0/0"
+    return first, state, logs, progress
 
-def run_flashcards_review(path: str) -> str:
-    """Review flashcards from a saved file (auto answer)."""
+
+def run_flashcards_review(path: str) -> tuple[str, dict, str]:
+    """Load flashcards from file for interactive review."""
     flashcards = FlashcardSet.load_from_file(path)
     if not flashcards:
-        return "Failed to load flashcards."
-    buffer = io.StringIO()
-    import builtins
+        return "Failed to load flashcards.", {}, "0/0"
+    cards = flashcards.to_dict_list()
+    state = _init_flashcard_state(cards)
+    first = _render_flashcard(state)
+    progress = f"1/{len(cards)}" if cards else "0/0"
+    return first, state, progress
 
-    def _fake_input(prompt: str = ""):
-        return ""
 
-    with redirect_stdout(buffer):
-        original_input = builtins.input
-        builtins.input = _fake_input
-        try:
-            flashcards.run_cli_review()
-        finally:
-            builtins.input = original_input
-    return buffer.getvalue()
+def flashcard_flip(state: dict) -> tuple[str, dict]:
+    """Flip between question and answer."""
+    if not state or not state.get("cards"):
+        return "", state
+    state["side"] = "answer" if state.get("side") == "question" else "question"
+    return _render_flashcard(state), state
+
+
+def flashcard_next(state: dict) -> tuple[str, dict, str]:
+    """Move to the next flashcard."""
+    if not state or not state.get("cards"):
+        return "", state, "0/0"
+    state["index"] = (state["index"] + 1) % len(state["cards"])
+    state["side"] = "question"
+    return (
+        _render_flashcard(state),
+        state,
+        f"{state['index'] + 1}/{len(state['cards'])}",
+    )
+
+
+def flashcard_prev(state: dict) -> tuple[str, dict, str]:
+    """Move to the previous flashcard."""
+    if not state or not state.get("cards"):
+        return "", state, "0/0"
+    state["index"] = (state["index"] - 1) % len(state["cards"])
+    state["side"] = "question"
+    return (
+        _render_flashcard(state),
+        state,
+        f"{state['index'] + 1}/{len(state['cards'])}",
+    )
+
+
+def flashcard_shuffle(state: dict) -> tuple[str, dict, str]:
+    """Shuffle flashcards order and restart."""
+    if not state or not state.get("cards"):
+        return "", state, "0/0"
+    random.shuffle(state["cards"])
+    state["index"] = 0
+    state["side"] = "question"
+    return _render_flashcard(state), state, f"1/{len(state['cards'])}"
 
 
 def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
@@ -230,7 +349,7 @@ def build_interface() -> gr.Blocks:
         lang_select = gr.Dropdown(
             choices=LanguageHandler.dropdown_choices(),
             value=LanguageHandler.dropdown_choices()[0],
-            label="Language"
+            label="Language",
         )
 
         with gr.Tabs():
@@ -238,7 +357,10 @@ def build_interface() -> gr.Blocks:
             with gr.TabItem("Chat with the bot"):
                 chatbot = gr.Chatbot(elem_id="chatbot")
                 with gr.Row():
-                    msg = gr.Textbox(placeholder="Type your message and press enter...", container=False)
+                    msg = gr.Textbox(
+                        placeholder="Type your message and press enter...",
+                        container=False,
+                    )
                     send = gr.Button("Send", variant="primary")
                     clear = gr.Button("Clear")
                 logs = gr.Textbox(label="Terminal output", lines=8)
@@ -267,12 +389,36 @@ def build_interface() -> gr.Blocks:
                 plan_quiz_output = gr.Textbox(label="Plan Output", lines=10)
                 quiz_state = gr.State()
 
-                start_btn.click(start_quiz, [quiz_subject, quiz_rag, lang_select], [quiz_question, quiz_state, quiz_result])
-                btn_a.click(lambda st: answer_quiz("a", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_b.click(lambda st: answer_quiz("b", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_c.click(lambda st: answer_quiz("c", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                btn_d.click(lambda st: answer_quiz("d", st), quiz_state, [quiz_question, quiz_state, quiz_result])
-                plan_quiz_btn.click(run_learning_plan_from_quiz, [quiz_name, quiz_state], plan_quiz_output)
+                start_btn.click(
+                    start_quiz,
+                    [quiz_subject, quiz_rag, lang_select],
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_a.click(
+                    lambda st: answer_quiz("a", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_b.click(
+                    lambda st: answer_quiz("b", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_c.click(
+                    lambda st: answer_quiz("c", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                btn_d.click(
+                    lambda st: answer_quiz("d", st),
+                    quiz_state,
+                    [quiz_question, quiz_state, quiz_result],
+                )
+                plan_quiz_btn.click(
+                    run_learning_plan_from_quiz,
+                    [quiz_name, quiz_state, lang_select],
+                    plan_quiz_output,
+                )
 
             # Learning plan tab
             with gr.TabItem("Learning plan"):
@@ -280,7 +426,11 @@ def build_interface() -> gr.Blocks:
                 plan_goals = gr.Textbox(label="Learning goals (semicolon separated)")
                 plan_btn = gr.Button("Generate Plan")
                 plan_output = gr.Textbox(label="Plan Output", lines=10)
-                plan_btn.click(run_learning_plan_interface, [plan_name, plan_goals, lang_select], plan_output)
+                plan_btn.click(
+                    run_learning_plan_interface,
+                    [plan_name, plan_goals, lang_select],
+                    plan_output,
+                )
 
             # Flashcards tab
             with gr.TabItem("Flashcards"):
@@ -288,15 +438,57 @@ def build_interface() -> gr.Blocks:
                     fc_topic = gr.Textbox(label="Topic")
                     fc_rag = gr.Checkbox(label="Use RAG", value=False)
                     fc_gen_btn = gr.Button("Generate")
-                    fc_cards = gr.JSON(label="Flashcards")
+                    with gr.Column(elem_id="flashcard-container"):
+                        fc_card = gr.Markdown(elem_id="flashcard-content")
+                        with gr.Column(elem_id="flashcard-buttons"):
+                            fc_prev = gr.Button("⬅️", size="sm", scale=0)
+                            fc_next = gr.Button("➡️", size="sm", scale=0)
+                            fc_flip = gr.Button("🔄", size="sm", scale=0)
+                            fc_shuffle = gr.Button("🔀", size="sm", scale=0)
+                        fc_counter = gr.Markdown("0/0", elem_id="flashcard-counter")
                     fc_logs = gr.Textbox(label="Logs", lines=4)
-                    fc_gen_btn.click(run_flashcards_generate, [fc_topic, fc_rag, lang_select], [fc_cards, fc_logs])
+                    fc_state = gr.State()
+
+                    fc_gen_btn.click(
+                        run_flashcards_generate,
+                        [fc_topic, fc_rag, lang_select],
+                        [fc_card, fc_state, fc_logs, fc_counter],
+                        show_progress=False,
+                    )
+                    fc_flip.click(
+                        flashcard_flip,
+                        fc_state,
+                        [fc_card, fc_state],
+                        show_progress=False,
+                    )
+                    fc_next.click(
+                        flashcard_next,
+                        fc_state,
+                        [fc_card, fc_state, fc_counter],
+                        show_progress=False,
+                    )
+                    fc_prev.click(
+                        flashcard_prev,
+                        fc_state,
+                        [fc_card, fc_state, fc_counter],
+                        show_progress=False,
+                    )
+                    fc_shuffle.click(
+                        flashcard_shuffle,
+                        fc_state,
+                        [fc_card, fc_state, fc_counter],
+                        show_progress=False,
+                    )
 
                 with gr.Accordion("Review flashcards", open=False):
                     fc_path = gr.Textbox(label="Path to flashcards JSON")
-                    fc_rev_btn = gr.Button("Review")
-                    fc_review_out = gr.Textbox(label="Review Output", lines=10)
-                    fc_rev_btn.click(run_flashcards_review, fc_path, fc_review_out)
+                    fc_load_btn = gr.Button("Load")
+                    fc_load_btn.click(
+                        run_flashcards_review,
+                        fc_path,
+                        [fc_card, fc_state, fc_counter],
+                        show_progress=False,
+                    )
 
             # Summary tab
             with gr.TabItem("Summary"):
@@ -304,7 +496,9 @@ def build_interface() -> gr.Blocks:
                 sum_rag = gr.Checkbox(label="Use RAG", value=False)
                 sum_btn = gr.Button("Generate Summary")
                 sum_output = gr.Textbox(label="Summary", lines=10)
-                sum_btn.click(run_summary_interface, [sum_topic, sum_rag, lang_select], sum_output)
+                sum_btn.click(
+                    run_summary_interface, [sum_topic, sum_rag, lang_select], sum_output
+                )
 
             # Cheat sheet tab
             with gr.TabItem("Cheat sheet"):
@@ -312,7 +506,9 @@ def build_interface() -> gr.Blocks:
                 cs_rag = gr.Checkbox(label="Use RAG", value=False)
                 cs_btn = gr.Button("Generate Cheat Sheet")
                 cs_output = gr.Textbox(label="Cheat Sheet", lines=10)
-                cs_btn.click(run_cheatsheet_interface, [cs_topic, cs_rag, lang_select], cs_output)
+                cs_btn.click(
+                    run_cheatsheet_interface, [cs_topic, cs_rag, lang_select], cs_output
+                )
 
     return demo
 
