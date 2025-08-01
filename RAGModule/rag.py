@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from typing import List, Optional
+import json
+from threading import Lock
 
 from sentence_transformers import CrossEncoder
 from multiprocessing import Lock
@@ -67,6 +69,9 @@ class RAGHandler:
         # 🔒 Mutex to prevent concurrent persistence
         self.lock = Lock()
 
+        # Lock for manifest operations
+        self.lock = Lock()
+
     def _init_embeddings(self):
         if self.embeddings is None:
             self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
@@ -81,6 +86,47 @@ class RAGHandler:
                 self.reranker = CrossEncoder(self.reranker_model)
             except Exception as e:
                 print(f"❌ Error loading reranker: {e}")
+
+    # ------------------------------------------------------------------
+    # Manifest helpers
+    # ------------------------------------------------------------------
+    def _manifest_path(self) -> Path:
+        """Return path to the manifest file."""
+        return Path(self.persist_dir) / "manifest.json"
+
+    def _scan_manifest(self) -> dict:
+        """Scan ``rag_path`` and return a mapping of file paths to mtimes."""
+        manifest = {}
+        for pattern in ("*.txt", "*.pdf", "*.csv"):
+            for p in self.rag_path.rglob(pattern):
+                manifest[str(p)] = p.stat().st_mtime
+        return manifest
+
+    def _load_manifest(self) -> dict:
+        """Load manifest from disk, returning an empty dict if missing."""
+        path = self._manifest_path()
+        with self.lock:
+            if path.exists():
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception:
+                    return {}
+            return {}
+
+    def _save_manifest(self, data: dict) -> None:
+        """Persist manifest ``data`` to disk."""
+        path = self._manifest_path()
+        with self.lock:
+            os.makedirs(path.parent, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+
+    def _needs_rebuild(self) -> bool:
+        """Return ``True`` if documents changed since last build."""
+        current = self._scan_manifest()
+        saved = self._load_manifest()
+        return current != saved
 
     def ingest(self) -> List[Document]:
         """
@@ -146,6 +192,8 @@ class RAGHandler:
         if persist:
             with self.lock:
                 vectordb.persist()
+                manifest = self._scan_manifest()
+                self._save_manifest(manifest)
 
         self.vectordb = vectordb
         return vectordb
@@ -157,8 +205,9 @@ class RAGHandler:
         self._init_embeddings()
         if self.vectordb is None:
             db_path = Path(self.persist_dir) / "chroma.sqlite3"
+            rebuild = self._needs_rebuild()
 
-            if db_path.exists():
+            if db_path.exists() and not rebuild:
                 try:
                     self.vectordb = Chroma(
                         embedding_function=self.embeddings,
