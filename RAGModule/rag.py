@@ -38,6 +38,8 @@ class RAGHandler:
         # 📂 Paths and basic setup
         self.rag_path = Path(rag_files_path)
         self.persist_dir = persist_directory
+        os.makedirs(self.rag_path, exist_ok=True)
+        os.makedirs(self.persist_dir, exist_ok=True)
 
         self.embedding_model = embedding_model
         self.llm_model = llm_model
