@@ -3,9 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 import json
 from threading import Lock
-
 from sentence_transformers import CrossEncoder
-from multiprocessing import Lock
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -66,10 +64,7 @@ class RAGHandler:
 
         # 🔄 Placeholder for the vectorstore
         self.vectordb: Optional[Chroma] = None
-        # 🔒 Mutex to prevent concurrent persistence
-        self.lock = Lock()
-
-        # Lock for manifest operations
+        # 🔒 Mutex for persistence and manifest operations
         self.lock = Lock()
 
     def _init_embeddings(self):
@@ -166,10 +161,12 @@ class RAGHandler:
         # 📄 Load CSV files (search recursively)
         for csv_path in self.rag_path.rglob("*.csv"):
             try:
-                loader = CSVLoader(str(csv_path))
+                loader = CSVLoader(str(csv_path), autodetect_encoding=True)
                 docs.extend(loader.load())
             except Exception as e:
                 print(f"❌ Error loading {csv_path}: {e}")
+
+        print(f"ℹ️ Ingested {len(docs)} documents from {self.rag_path}")
 
         return docs
 
@@ -188,6 +185,7 @@ class RAGHandler:
             print("ℹ️ Ingesting documents for vectorstore build...")
             docs = self.ingest()
         chunks = self.split(docs)
+        print(f"ℹ️ Created {len(chunks)} document chunks for embedding")
 
         try:
             vectordb = Chroma.from_documents(
@@ -217,6 +215,8 @@ class RAGHandler:
                 manifest = self._scan_manifest()
                 self._save_manifest(manifest)
 
+        print(f"✅ Vectorstore built at {self.persist_dir}")
+
         self.vectordb = vectordb
         return vectordb
 
@@ -241,6 +241,8 @@ class RAGHandler:
                             raise ValueError("empty collection")
                     except Exception:
                         self.vectordb = self.build_vectorstore()
+                    else:
+                        print(f"✅ Loaded vectorstore from {self.persist_dir}")
                 except Exception as e:
                     import shutil
 
