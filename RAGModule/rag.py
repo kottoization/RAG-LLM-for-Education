@@ -5,6 +5,7 @@ import json
 from threading import Lock
 
 from sentence_transformers import CrossEncoder
+from multiprocessing import Lock
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -40,6 +41,8 @@ class RAGHandler:
         # 📂 Paths and basic setup
         self.rag_path = Path(rag_files_path)
         self.persist_dir = persist_directory
+        os.makedirs(self.rag_path, exist_ok=True)
+        os.makedirs(self.persist_dir, exist_ok=True)
 
         self.embedding_model = embedding_model
         self.llm_model = llm_model
@@ -63,6 +66,8 @@ class RAGHandler:
 
         # 🔄 Placeholder for the vectorstore
         self.vectordb: Optional[Chroma] = None
+        # 🔒 Mutex to prevent concurrent persistence
+        self.lock = Lock()
 
         # Lock for manifest operations
         self.lock = Lock()
