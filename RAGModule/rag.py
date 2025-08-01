@@ -16,6 +16,14 @@ from langchain.schema import Document
 from langchain_openai import ChatOpenAI
 
 
+def _reset_dir(path: str) -> None:
+    """Remove and recreate a directory used for persistence."""
+    import shutil
+
+    shutil.rmtree(path, ignore_errors=True)
+    os.makedirs(path, exist_ok=True)
+
+
 class RAGHandler:
     """
     Core RAG functionality:
@@ -130,10 +138,8 @@ class RAGHandler:
             )
         except Exception as e:
             # Rebuild from scratch if we hit errors during construction
-            import shutil
-
             print(f"⚠️ Error building vectorstore: {e}. Recreating DB...")
-            shutil.rmtree(self.persist_dir, ignore_errors=True)
+            _reset_dir(self.persist_dir)
             vectordb = Chroma.from_documents(
                 chunks, self.embeddings, persist_directory=self.persist_dir
             )
@@ -167,12 +173,10 @@ class RAGHandler:
                         self.vectordb = self.build_vectorstore()
                 except Exception as e:
                     # Corrupted DB - remove and rebuild
-                    import shutil
-
                     print(
                         f"⚠️ Error loading vectorstore: {e}. Recreating DB..."
                     )
-                    shutil.rmtree(self.persist_dir, ignore_errors=True)
+                    _reset_dir(self.persist_dir)
                     self.vectordb = self.build_vectorstore()
             else:
                 self.vectordb = self.build_vectorstore()
