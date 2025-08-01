@@ -31,6 +31,18 @@ def define_word(word: str) -> str:
             return "No definition found."
         defs = {s.definition() for s in synsets}
         return "; ".join(sorted(defs))
+    except LookupError:
+        import nltk
+
+        try:
+            nltk.download("wordnet")
+            synsets = wn.synsets(word)
+            if not synsets:
+                return "No definition found."
+            defs = {s.definition() for s in synsets}
+            return "; ".join(sorted(defs))
+        except Exception as e:  # pragma: no cover
+            return f"Error retrieving definition: {e}"
     except Exception as e:  # pragma: no cover
         return f"Error retrieving definition: {e}"
 

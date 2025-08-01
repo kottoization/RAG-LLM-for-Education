@@ -212,7 +212,8 @@ class RAGHandler:
 
         if persist:
             with self.lock:
-                vectordb.persist()
+                if hasattr(vectordb, "persist"):
+                    vectordb.persist()
                 manifest = self._scan_manifest()
                 self._save_manifest(manifest)
 
