@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from sentence_transformers import CrossEncoder
+from multiprocessing import Lock
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -61,6 +62,8 @@ class RAGHandler:
 
         # 🔄 Placeholder for the vectorstore
         self.vectordb: Optional[Chroma] = None
+        # 🔒 Mutex to prevent concurrent persistence
+        self.lock = Lock()
 
     def _init_embeddings(self):
         if self.embeddings is None:
@@ -139,7 +142,8 @@ class RAGHandler:
             )
 
         if persist:
-            vectordb.persist()
+            with self.lock:
+                vectordb.persist()
 
         self.vectordb = vectordb
         return vectordb
