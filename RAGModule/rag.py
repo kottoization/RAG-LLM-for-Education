@@ -74,16 +74,29 @@ class RAGHandler:
 
     def _init_embeddings(self):
         if self.embeddings is None:
-            self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
+            try:
+                self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
+                print(f"✅ Loaded embeddings model: {self.embedding_model}")
+            except Exception as e:
+                print(
+                    f"❌ Failed to initialize embeddings model '{self.embedding_model}': {e}"
+                )
+                raise
 
     def _init_llm(self):
         if self.llm is None:
-            self.llm = ChatOpenAI(model=self.llm_model, temperature=0.2)
+            try:
+                self.llm = ChatOpenAI(model=self.llm_model, temperature=0.2)
+                print(f"✅ Loaded LLM model: {self.llm_model}")
+            except Exception as e:
+                print(f"❌ Failed to initialize LLM '{self.llm_model}': {e}")
+                raise
 
     def _init_reranker(self):
         if self.reranker is None:
             try:
                 self.reranker = CrossEncoder(self.reranker_model)
+                print(f"✅ Loaded reranker model: {self.reranker_model}")
             except Exception as e:
                 print(f"❌ Error loading reranker: {e}")
 
@@ -172,6 +185,7 @@ class RAGHandler:
         """Build (or rebuild) the Chroma vectorstore from provided docs."""
         self._init_embeddings()
         if docs is None:
+            print("ℹ️ Ingesting documents for vectorstore build...")
             docs = self.ingest()
         chunks = self.split(docs)
 
@@ -180,14 +194,21 @@ class RAGHandler:
                 chunks, self.embeddings, persist_directory=self.persist_dir
             )
         except Exception as e:
-            # Rebuild from scratch if we hit errors during construction
             import shutil
 
-            print(f"⚠️ Error building vectorstore: {e}. Recreating DB...")
+            print(f"⚠️ Error building vectorstore: {e}. Removing old data...")
             shutil.rmtree(self.persist_dir, ignore_errors=True)
-            vectordb = Chroma.from_documents(
-                chunks, self.embeddings, persist_directory=self.persist_dir
-            )
+            try:
+                vectordb = Chroma.from_documents(
+                    chunks, self.embeddings, persist_directory=self.persist_dir
+                )
+            except Exception as e2:
+                print(
+                    f"❌ Failed to rebuild vectorstore after cleanup: {e2}. "
+                    "Ensure your embeddings work and delete the directory "
+                    f"'{self.persist_dir}' if the problem persists."
+                )
+                raise
 
         if persist:
             with self.lock:
@@ -206,7 +227,6 @@ class RAGHandler:
         if self.vectordb is None:
             db_path = Path(self.persist_dir) / "chroma.sqlite3"
             rebuild = self._needs_rebuild()
-
             if db_path.exists() and not rebuild:
                 try:
                     self.vectordb = Chroma(
@@ -221,15 +241,18 @@ class RAGHandler:
                     except Exception:
                         self.vectordb = self.build_vectorstore()
                 except Exception as e:
-                    # Corrupted DB - remove and rebuild
                     import shutil
 
-                    print(
-                        f"⚠️ Error loading vectorstore: {e}. Recreating DB..."
-                    )
+                    print(f"⚠️ Error loading vectorstore: {e}. Recreating DB...")
                     shutil.rmtree(self.persist_dir, ignore_errors=True)
                     self.vectordb = self.build_vectorstore()
             else:
+                if rebuild:
+                    print(
+                        "ℹ️ Detected new or updated documents. Rebuilding vectorstore..."
+                    )
+                else:
+                    print("ℹ️ No existing vectorstore found. Building a new one...")
                 self.vectordb = self.build_vectorstore()
         return self.vectordb
 
