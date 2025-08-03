@@ -1,4 +1,6 @@
 import os
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 import json
@@ -140,6 +142,10 @@ class RAGHandler:
         """
         Load all .txt and .pdf files from rag_path into LangChain Documents.
         """
+        start_ts = datetime.now().isoformat()
+        start = time.perf_counter()
+        print(f"⏱️ Starting ingest at {start_ts}")
+
         docs: List[Document] = []
 
         # 📄 Load TXT files (search recursively)
@@ -168,18 +174,38 @@ class RAGHandler:
 
         print(f"ℹ️ Ingested {len(docs)} documents from {self.rag_path}")
 
+        end = time.perf_counter()
+        end_ts = datetime.now().isoformat()
+        print(
+            f"⏱️ Finished ingest at {end_ts} (duration {end - start:.2f}s)"
+        )
+
         return docs
 
     def split(self, docs: List[Document]) -> List[Document]:
         """
         Split raw documents into smaller chunks.
         """
-        return self.text_splitter.split_documents(docs)
+        start_ts = datetime.now().isoformat()
+        start = time.perf_counter()
+        print(f"⏱️ Starting split at {start_ts}")
+
+        chunks = self.text_splitter.split_documents(docs)
+
+        end = time.perf_counter()
+        end_ts = datetime.now().isoformat()
+        print(f"⏱️ Finished split at {end_ts} (duration {end - start:.2f}s)")
+
+        return chunks
 
     def build_vectorstore(
         self, docs: Optional[List[Document]] = None, persist: bool = True
     ) -> Chroma:
         """Build (or rebuild) the Chroma vectorstore from provided docs."""
+        start_ts = datetime.now().isoformat()
+        start = time.perf_counter()
+        print(f"⏱️ Starting vectorstore build at {start_ts}")
+
         self._init_embeddings()
         if docs is None:
             print("ℹ️ Ingesting documents for vectorstore build...")
@@ -216,8 +242,14 @@ class RAGHandler:
                 self._save_manifest(manifest)
 
         print(f"✅ Vectorstore built at {self.persist_dir}")
-
         self.vectordb = vectordb
+
+        end = time.perf_counter()
+        end_ts = datetime.now().isoformat()
+        print(
+            f"⏱️ Finished vectorstore build at {end_ts} (duration {end - start:.2f}s)"
+        )
+
         return vectordb
 
     def load_vectorstore(self) -> Chroma:
