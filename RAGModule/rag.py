@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - legacy support
 from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI
+from openai import APIError, APITimeoutError
 
 
 class RAGHandler:
@@ -35,6 +36,8 @@ class RAGHandler:
         llm_model: str = "gpt-3.5-turbo",
         chunk_size: int = 1000,
         chunk_overlap: int = 100,
+        request_timeout: int = 60,
+        max_retries: int = 5,
     ):
         # 📂 Paths and basic setup
         self.rag_path = Path(rag_files_path)
@@ -44,6 +47,8 @@ class RAGHandler:
 
         self.embedding_model = embedding_model
         self.llm_model = llm_model
+        self.request_timeout = request_timeout
+        self.max_retries = max_retries
 
         # ✂️ Text splitter for chunking documents
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -70,8 +75,22 @@ class RAGHandler:
     def _init_embeddings(self):
         if self.embeddings is None:
             try:
-                self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
+                self.embeddings = OpenAIEmbeddings(
+                    model=self.embedding_model,
+                    request_timeout=self.request_timeout,
+                    max_retries=self.max_retries,
+                )
                 print(f"✅ Loaded embeddings model: {self.embedding_model}")
+            except (APITimeoutError, TimeoutError) as e:
+                print(
+                    f"❌ Embeddings model '{self.embedding_model}' timed out: {e}"
+                )
+                raise
+            except APIError as e:
+                print(
+                    f"❌ OpenAI API error for embeddings model '{self.embedding_model}': {e}"
+                )
+                raise
             except Exception as e:
                 print(
                     f"❌ Failed to initialize embeddings model '{self.embedding_model}': {e}"
@@ -81,8 +100,19 @@ class RAGHandler:
     def _init_llm(self):
         if self.llm is None:
             try:
-                self.llm = ChatOpenAI(model=self.llm_model, temperature=0.2)
+                self.llm = ChatOpenAI(
+                    model=self.llm_model,
+                    temperature=0.2,
+                    request_timeout=self.request_timeout,
+                    max_retries=self.max_retries,
+                )
                 print(f"✅ Loaded LLM model: {self.llm_model}")
+            except (APITimeoutError, TimeoutError) as e:
+                print(f"❌ LLM '{self.llm_model}' timed out: {e}")
+                raise
+            except APIError as e:
+                print(f"❌ OpenAI API error for LLM '{self.llm_model}': {e}")
+                raise
             except Exception as e:
                 print(f"❌ Failed to initialize LLM '{self.llm_model}': {e}")
                 raise
