@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 import json
 from threading import Lock
+from itertools import islice
 from sentence_transformers import CrossEncoder
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -136,9 +137,20 @@ class RAGHandler:
         saved = self._load_manifest()
         return current != saved
 
-    def ingest(self) -> List[Document]:
+    def ingest(
+        self,
+        csv_encoding: str = "utf-8",
+        csv_row_limit: Optional[int] = None,
+    ) -> List[Document]:
         """
-        Load all .txt and .pdf files from rag_path into LangChain Documents.
+        Load all .txt, .pdf and .csv files from ``rag_path`` into LangChain
+        ``Document`` objects.
+
+        Args:
+            csv_encoding: Encoding used to read CSV files.
+            csv_row_limit: If a CSV file exceeds the size threshold and this
+                value is provided, only the first ``csv_row_limit`` rows are
+                ingested. Otherwise the file is skipped.
         """
         docs: List[Document] = []
 
@@ -159,10 +171,27 @@ class RAGHandler:
                 print(f"❌ Error loading {pdf_path}: {e}")
 
         # 📄 Load CSV files (search recursively)
+        size_threshold = 5 * 1024 * 1024  # 5 MB
         for csv_path in self.rag_path.rglob("*.csv"):
             try:
-                loader = CSVLoader(str(csv_path), autodetect_encoding=True)
-                docs.extend(loader.load())
+                file_size = csv_path.stat().st_size
+                if file_size > size_threshold:
+                    if csv_row_limit:
+                        loader = CSVLoader(str(csv_path), encoding=csv_encoding)
+                        docs.extend(islice(loader.lazy_load(), csv_row_limit))
+                        print(
+                            f"⚠️ {csv_path} exceeds size limit. "
+                            f"Sampling first {csv_row_limit} rows."
+                        )
+                    else:
+                        print(
+                            f"⚠️ Skipping {csv_path}: size {file_size} bytes "
+                            f"exceeds limit of {size_threshold} bytes"
+                        )
+                        continue
+                else:
+                    loader = CSVLoader(str(csv_path), encoding=csv_encoding)
+                    docs.extend(loader.load())
             except Exception as e:
                 print(f"❌ Error loading {csv_path}: {e}")
 
