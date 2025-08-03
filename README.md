@@ -12,6 +12,7 @@ Optionally the tools can use RAG (Retrieval Augmented Generation) on your local 
   - [CLI](#cli)
   - [Gradio Frontend](#gradio-frontend)
 - [Project Structure](#project-structure)
+- [Preparing RAG Data](#preparing-rag-data)
 - [Testing](#testing)
 - [Author](#author)
 
@@ -69,6 +70,17 @@ Both entry points import the same agent used by the optional CLI so you get iden
   follows a structured three-section layout inspired by the [RStudio cheatsheet guidelines](https://github.com/rstudio/cheatsheets/blob/main/.github/CONTRIBUTING.md) for clearer review notes.
 - `frontend_service/` – Gradio based chat interface
 - `data/` – example data and vector store persistence
+
+## Preparing RAG Data
+Before adding large CSV files to `data/RAG_files`, split them into smaller pieces so the
+indexer can handle them efficiently. Use the helper script:
+
+```bash
+python -m tools.csv_utils path/to/large.csv data/RAG_files --rows 1000
+```
+
+Replace `path/to/large.csv` with your CSV file and adjust `--rows` to control the number
+of lines per chunk. The script writes numbered files in `data/RAG_files`.
 
 ## Testing
 No automated tests are provided yet, but you can run `pytest` to verify that none are failing:
