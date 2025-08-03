@@ -17,6 +17,7 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
     llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
     context = ""
+    rag = None
     if use_rag:
         if retriever:
             docs = retriever.get_relevant_documents(subject)
@@ -50,17 +51,22 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
         if retriever:
             context_chain = RunnableLambda(
                 lambda inputs: "\n\n".join(
-                    [doc.page_content for doc in retriever.get_relevant_documents(inputs["topic"])]
+                    [
+                        doc.page_content
+                        for doc in retriever.get_relevant_documents(inputs["topic"])
+                    ]
                 )
             )
         else:
-            rag = RAGHandler()
-            rag.load_vectorstore()
             context_chain = RunnableLambda(
-                lambda inputs: rag.get_context(inputs["topic"], k=3, use_rerank=True)
+                lambda inputs: rag.get_context(
+                    inputs["topic"], k=3, use_rerank=True
+                )
             )
         prompt_chain = RunnableLambda(
-            lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
+            lambda inputs: generate_questions_prompt(
+                inputs["topic"], language=language
+            ).format_prompt(topic=inputs["topic"])
         )
         question_chain = (
             RunnableParallel({"ctx": context_chain, "prompt": prompt_chain})
@@ -69,7 +75,9 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
         )
     else:
         question_chain = RunnableLambda(
-            lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
+            lambda inputs: generate_questions_prompt(
+                inputs["topic"], language=language
+            ).format_prompt(topic=inputs["topic"])
         ) | llm
 
     question_sets = question_chain.batch([{"topic": t} for t in topics])
