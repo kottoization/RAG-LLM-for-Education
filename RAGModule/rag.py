@@ -13,6 +13,10 @@ from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI
 
+# TODO : make the DB reusable, # i.e. if the vectorstore already exists, just load it
+# TODO : add a way to update the vectorstore with new documents without rebuilding everything
+# TODO : double check implementation in order to optimize the performance
+
 class RAGHandler:
     """
     Core RAG functionality:
