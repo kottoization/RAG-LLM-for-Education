@@ -6,7 +6,7 @@ from typing import List, Optional
 import json
 from threading import Lock
 from itertools import islice
-from sentence_transformers import CrossEncoder
+import shutil
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -67,7 +67,7 @@ class RAGHandler:
         self.llm: Optional[ChatOpenAI] = None
 
         # 🔍 Cross-encoder reranker (lazy)
-        self.reranker: Optional[CrossEncoder] = None
+        self.reranker: Optional[object] = None
         self.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
         # 🔄 Placeholder for the vectorstore
@@ -123,6 +123,8 @@ class RAGHandler:
     def _init_reranker(self):
         if self.reranker is None:
             try:
+                from sentence_transformers import CrossEncoder
+
                 self.reranker = CrossEncoder(self.reranker_model)
                 print(f"✅ Loaded reranker model: {self.reranker_model}")
             except Exception as e:
@@ -272,26 +274,20 @@ class RAGHandler:
         chunks = self.split(docs)
         print(f"ℹ️ Created {len(chunks)} document chunks for embedding")
 
-        try:
-            vectordb = Chroma.from_documents(
-                chunks, self.embeddings, persist_directory=self.persist_dir
-            )
-        except Exception as e:
-            import shutil
+        # Always rebuild the directory to avoid mixing old and new data
+        shutil.rmtree(self.persist_dir, ignore_errors=True)
+        vectordb = Chroma(
+            embedding_function=self.embeddings, persist_directory=self.persist_dir
+        )
 
-            print(f"⚠️ Error building vectorstore: {e}. Removing old data...")
-            shutil.rmtree(self.persist_dir, ignore_errors=True)
-            try:
-                vectordb = Chroma.from_documents(
-                    chunks, self.embeddings, persist_directory=self.persist_dir
-                )
-            except Exception as e2:
-                print(
-                    f"❌ Failed to rebuild vectorstore after cleanup: {e2}. "
-                    "Ensure your embeddings work and delete the directory "
-                    f"'{self.persist_dir}' if the problem persists."
-                )
-                raise
+        batch_size = 100
+        total = len(chunks)
+        for start_idx in range(0, total, batch_size):
+            batch = chunks[start_idx : start_idx + batch_size]
+            vectordb.add_documents(batch)
+            processed = min(start_idx + batch_size, total)
+            print(f"🔄 Embedded {processed}/{total} chunks", end="\r")
+        print()
 
         if persist:
             with self.lock:
