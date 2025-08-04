@@ -6,7 +6,7 @@ from typing import List, Optional
 import json
 from threading import Lock
 from itertools import islice
-from sentence_transformers import CrossEncoder
+import shutil
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -67,7 +67,7 @@ class RAGHandler:
         self.llm: Optional[ChatOpenAI] = None
 
         # 🔍 Cross-encoder reranker (lazy)
-        self.reranker: Optional[CrossEncoder] = None
+        self.reranker: Optional[object] = None
         self.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
         # 🔄 Placeholder for the vectorstore
@@ -123,6 +123,8 @@ class RAGHandler:
     def _init_reranker(self):
         if self.reranker is None:
             try:
+                from sentence_transformers import CrossEncoder
+
                 self.reranker = CrossEncoder(self.reranker_model)
                 print(f"✅ Loaded reranker model: {self.reranker_model}")
             except Exception as e:
@@ -249,7 +251,11 @@ class RAGHandler:
         start = time.perf_counter()
         print(f"⏱️ Starting split at {start_ts}")
 
-        chunks = self.text_splitter.split_documents(docs)
+        try:
+            chunks = self.text_splitter.split_documents(docs)
+        except Exception as e:
+            print(f"❌ Error during split: {e}")
+            raise
 
         end = time.perf_counter()
         end_ts = datetime.now().isoformat()
@@ -272,33 +278,40 @@ class RAGHandler:
         chunks = self.split(docs)
         print(f"ℹ️ Created {len(chunks)} document chunks for embedding")
 
-        try:
-            vectordb = Chroma.from_documents(
-                chunks, self.embeddings, persist_directory=self.persist_dir
-            )
-        except Exception as e:
-            import shutil
+        # Always rebuild the directory to avoid mixing old and new data
+        shutil.rmtree(self.persist_dir, ignore_errors=True)
+        vectordb = Chroma(
+            embedding_function=self.embeddings, persist_directory=self.persist_dir
+        )
 
-            print(f"⚠️ Error building vectorstore: {e}. Removing old data...")
-            shutil.rmtree(self.persist_dir, ignore_errors=True)
+        batch_size = 100
+        total = len(chunks)
+        for start_idx in range(0, total, batch_size):
+            batch = chunks[start_idx : start_idx + batch_size]
             try:
-                vectordb = Chroma.from_documents(
-                    chunks, self.embeddings, persist_directory=self.persist_dir
-                )
-            except Exception as e2:
-                print(
-                    f"❌ Failed to rebuild vectorstore after cleanup: {e2}. "
-                    "Ensure your embeddings work and delete the directory "
-                    f"'{self.persist_dir}' if the problem persists."
-                )
-                raise
+                vectordb.add_documents(batch)
+                if persist and hasattr(vectordb, "persist"):
+                    vectordb.persist()
+            except Exception as e:
+                print(f"❌ Error embedding batch {start_idx}-{start_idx + batch_size}: {e}")
+                continue
+            processed = min(start_idx + batch_size, total)
+            print(f"🔄 Embedded {processed}/{total} chunks", end="\r")
+        print()
 
         if persist:
+            print("💾 Finalizing vectorstore...")
             with self.lock:
-                if hasattr(vectordb, "persist"):
-                    vectordb.persist()
-                manifest = self._scan_manifest()
-                self._save_manifest(manifest)
+                try:
+                    if hasattr(vectordb, "persist"):
+                        vectordb.persist()
+                except Exception as e:
+                    print(f"⚠️ Error during final persist: {e}")
+                try:
+                    manifest = self._scan_manifest()
+                    self._save_manifest(manifest)
+                except Exception as e:
+                    print(f"⚠️ Error saving manifest: {e}")
 
         print(f"✅ Vectorstore built at {self.persist_dir}")
         self.vectordb = vectordb
@@ -319,13 +332,12 @@ class RAGHandler:
         if self.vectordb is None:
             db_path = Path(self.persist_dir) / "chroma.sqlite3"
             rebuild = self._needs_rebuild()
-            if db_path.exists() and not rebuild:
-                try:
+            try:
+                if db_path.exists() and not rebuild:
                     self.vectordb = Chroma(
                         embedding_function=self.embeddings,
                         persist_directory=self.persist_dir,
                     )
-
                     try:
                         # Empty or inconsistent collection -> rebuild
                         if self.vectordb._collection.count() == 0:
@@ -334,19 +346,19 @@ class RAGHandler:
                         self.vectordb = self.build_vectorstore()
                     else:
                         print(f"✅ Loaded vectorstore from {self.persist_dir}")
-                except Exception as e:
-                    import shutil
-
-                    print(f"⚠️ Error loading vectorstore: {e}. Recreating DB...")
-                    shutil.rmtree(self.persist_dir, ignore_errors=True)
-                    self.vectordb = self.build_vectorstore()
-            else:
-                if rebuild:
-                    print(
-                        "ℹ️ Detected new or updated documents. Rebuilding vectorstore..."
-                    )
                 else:
-                    print("ℹ️ No existing vectorstore found. Building a new one...")
+                    if rebuild:
+                        print(
+                            "ℹ️ Detected new or updated documents. Rebuilding vectorstore..."
+                        )
+                    else:
+                        print("ℹ️ No existing vectorstore found. Building a new one...")
+                    self.vectordb = self.build_vectorstore()
+            except Exception as e:
+                import shutil
+
+                print(f"⚠️ Error loading vectorstore: {e}. Recreating DB...")
+                shutil.rmtree(self.persist_dir, ignore_errors=True)
                 self.vectordb = self.build_vectorstore()
         return self.vectordb
 
@@ -373,13 +385,17 @@ class RAGHandler:
         Return top-k document chunks relevant to the query. When ``use_rerank``
         is True, fetch more documents and sort them with a cross-encoder.
         """
-        db = self.load_vectorstore()
-        search_k = k * 3 if use_rerank else k
-        retriever = db.as_retriever(search_kwargs={"k": search_k})  # 🔍
-        docs = retriever.get_relevant_documents(query)
-        if use_rerank:
-            docs = self.rerank_documents(docs, query, k)
-        return docs
+        try:
+            db = self.load_vectorstore()
+            search_k = k * 3 if use_rerank else k
+            retriever = db.as_retriever(search_kwargs={"k": search_k})  # 🔍
+            docs = retriever.get_relevant_documents(query)
+            if use_rerank:
+                docs = self.rerank_documents(docs, query, k)
+            return docs
+        except Exception as e:
+            print(f"❌ Error during semantic search: {e}")
+            return []
 
     def get_context(self, query: str, k: int = 3, use_rerank: bool = False) -> str:
         """
@@ -395,30 +411,34 @@ class RAGHandler:
         before passing to the QA chain.
         """
         self._init_llm()
-        db = self.load_vectorstore()
-        if use_rerank:
-            docs = self.semantic_search(query, k=k, use_rerank=True)
+        try:
+            db = self.load_vectorstore()
+            if use_rerank:
+                docs = self.semantic_search(query, k=k, use_rerank=True)
 
-            class _StaticRetriever:
-                def __init__(self, docs):
-                    self.docs = docs
+                class _StaticRetriever:
+                    def __init__(self, docs):
+                        self.docs = docs
 
-                def get_relevant_documents(self, _query):
-                    return self.docs
+                    def get_relevant_documents(self, _query):
+                        return self.docs
 
-                async def aget_relevant_documents(self, _query):
-                    return self.docs
+                    async def aget_relevant_documents(self, _query):
+                        return self.docs
 
-            retriever = _StaticRetriever(docs)
-        else:
-            retriever = db.as_retriever(search_kwargs={"k": k})
+                retriever = _StaticRetriever(docs)
+            else:
+                retriever = db.as_retriever(search_kwargs={"k": k})
 
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=retriever,
-        )  # 🤖
-        return qa_chain.run(query)
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=self.llm,
+                chain_type="stuff",
+                retriever=retriever,
+            )  # 🤖
+            return qa_chain.run(query)
+        except Exception as e:
+            print(f"❌ Error during answer generation: {e}")
+            return ""
 
     def get_retriever(self, k: int = 5):
         """Return a retriever over the loaded vector store."""
