@@ -19,13 +19,19 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
     context = ""
     rag = None
     if use_rag:
-        if retriever:
-            docs = retriever.get_relevant_documents(subject)
-        else:
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            docs = rag.semantic_search(subject, k=3, use_rerank=True)
-        context = "\n\n".join([doc.page_content for doc in docs])
+        try:
+            if retriever:
+                docs = retriever.get_relevant_documents(subject)
+            else:
+                rag = RAGHandler()
+                print("🔍 Loading vectorstore for quiz generation...")
+                rag.load_vectorstore()
+                print("🔍 Searching for relevant context...")
+                docs = rag.semantic_search(subject, k=3, use_rerank=True)
+            context = "\n\n".join([doc.page_content for doc in docs])
+        except Exception as e:
+            print(f"❌ RAG error while preparing quiz: {e}")
+            context = ""
 
     prompt_subject = subject
     if context:
