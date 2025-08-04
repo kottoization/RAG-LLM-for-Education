@@ -6,6 +6,7 @@ from typing import List, Optional
 import json
 from threading import Lock
 from itertools import islice
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from sentence_transformers import CrossEncoder
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, CSVLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -169,6 +170,46 @@ class RAGHandler:
         saved = self._load_manifest()
         return current != saved
 
+    def _persist_vectordb(
+        self, vectordb: Chroma, threshold: float = 60.0
+    ) -> tuple[bool, bool, float]:
+        """Persist ``vectordb`` to disk, tracking elapsed time.
+
+        Returns a tuple of ``(success, timed_out, duration)``.
+        ``timed_out`` is ``True`` only when the operation exceeded ``threshold``
+        seconds and was aborted.
+        """
+
+        start = time.perf_counter()
+
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(vectordb.persist)
+                future.result(timeout=threshold)
+        except FuturesTimeoutError:
+            duration = time.perf_counter() - start
+            print(
+                f"❌ vectordb.persist() timed out after {threshold}s; duration {duration:.2f}s"
+            )
+            return False, True, duration
+        except Exception as e:
+            duration = time.perf_counter() - start
+            print(
+                f"❌ Error during vectordb.persist after {duration:.2f}s: {e}"
+            )
+            return False, False, duration
+
+        duration = time.perf_counter() - start
+        if duration > threshold:
+            print(
+                f"⚠️ vectordb.persist() completed in {duration:.2f}s, exceeding threshold {threshold}s"
+            )
+        else:
+            print(
+                f"ℹ️ vectordb.persist() completed in {duration:.2f}s"
+            )
+        return True, False, duration
+
     def ingest(
         self,
         csv_encoding: str = "utf-8",
@@ -295,10 +336,16 @@ class RAGHandler:
 
         if persist:
             with self.lock:
+                timed_out = False
                 if hasattr(vectordb, "persist"):
-                    vectordb.persist()
-                manifest = self._scan_manifest()
-                self._save_manifest(manifest)
+                    success, timed_out, _ = self._persist_vectordb(vectordb)
+                    if not success and not timed_out:
+                        print("⚠️ Vectorstore persistence failed; continuing.")
+                if not timed_out:
+                    manifest = self._scan_manifest()
+                    self._save_manifest(manifest)
+                else:
+                    print("⚠️ Skipping manifest save due to persistence timeout.")
 
         print(f"✅ Vectorstore built at {self.persist_dir}")
         self.vectordb = vectordb
