@@ -47,12 +47,6 @@ def calculator(expression: str) -> str:
 
 
 @tool
-def document_search(_: str) -> str:
-    """Placeholder for document search functionality."""
-    return "Document search not implemented"
-
-
-@tool
 def current_date(_: str = "") -> str:
     """Return today's date in ISO format."""
     return datetime.utcnow().strftime("%Y-%m-%d")
