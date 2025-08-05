@@ -17,6 +17,7 @@ from FlashcardsModule import FlashcardSet
 from LearningPlanModule import LearningPlan
 from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
 from SummaryModule import StudySummaryGenerator
+from RAGModule import RAGHandler
 from tools.language_handler import LanguageHandler
 
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
@@ -331,7 +332,8 @@ def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
-    return summarizer.generate_summary(topic, language=language, use_rag=use_rag)
+    retriever = RAGHandler().get_retriever(k=5) if use_rag else None
+    return summarizer.generate_summary(topic, language=language, retriever=retriever)
 
 
 def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str:

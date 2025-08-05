@@ -1,17 +1,17 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from tools.language_handler import LanguageHandler
-from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
-from RAGModule.rag import RAGHandler
 
-# TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect. 
+# TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect.
+
 
 class StudySummaryGenerator:
     """
     Generates a detailed study guide based on a topic – intended for learning, not just review.
     Ideal for exam preparation.
     """
-    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5,retriever=None):
+
+    def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5, retriever=None):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
         self.retriever = retriever
 
@@ -48,45 +48,28 @@ Only output the content. No introductions or commentary.
 
 Respond in {language}.
 """
-        ) 
-
-    def generate_summary(
-        self,
-        input_text: str,
-        language: str = "en",
-        use_rag: bool = False,
-        retriever=None
-    ) -> str:
-        """
-        Generate a detailed study summary using the configured LLM and prompt.
-        If ``use_rag`` is True, an external ``retriever`` can be supplied for
-        context; otherwise a new :class:`RAGHandler` will be used.
-        """
-        lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language
-
-        retriever = retriever or self.retriever
-
-        def _fetch_context(inputs):
-            if retriever:
-                """Retrieve additional context using RAG if a retriever is provided."""
-                docs = retriever.get_relevant_documents(inputs["input"])
-                ctx = "\n\n".join([doc.page_content for doc in docs])
-            else:
-                rag = RAGHandler()
-                rag.load_vectorstore()
-                ctx = rag.get_context(inputs["input"], k=3)
-            inputs["input"] = f"{ctx}\n\n### Topic:\n{inputs['input']}"
-            return inputs
-
-        def _skip_context(inputs):
-            return inputs
-
-        branch = RunnableBranch(
-            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
-            RunnableLambda(_skip_context)
         )
 
-        chain = RunnableSequence(branch, self.base_prompt | self.llm)
+    def generate_summary(
+        self, input_text: str, language: str = "en", retriever=None
+    ) -> str:
+        """Generate a detailed study summary using the configured LLM and prompt.
 
-        response = chain.invoke({"input": input_text, "language": lang, "use_rag": use_rag})
+        If a ``retriever`` is provided, it will be used to supply additional
+        context for the summary.
+        """
+        lang = (
+            LanguageHandler.choose_or_detect(input_text)
+            if language == "auto"
+            else language
+        )
+
+        retriever = retriever or self.retriever
+        if retriever:
+            docs = retriever.get_relevant_documents(input_text)
+            ctx = "\n\n".join([doc.page_content for doc in docs])
+            input_text = f"{ctx}\n\n### Topic:\n{input_text}"
+
+        chain = self.base_prompt | self.llm
+        response = chain.invoke({"input": input_text, "language": lang})
         return response.content

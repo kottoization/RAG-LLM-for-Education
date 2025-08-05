@@ -203,15 +203,17 @@ def main_menu():
             topic = prompt_input("Enter the topic or material for TL;DR summary: ")
             language = LanguageHandler.choose_or_detect(topic)
             # pass retriever to summary
-            summarizer = StudySummaryGenerator(retriever=retriever)
             use_rag = (
                 prompt_input("Enrich summary with your documents? (y/N): ")
                 .strip()
                 .lower()
                 == "y"
             )
+            summarizer = StudySummaryGenerator()
             summary = summarizer.generate_summary(
-                topic, language=language, use_rag=use_rag, retriever=retriever
+                topic,
+                language=language,
+                retriever=retriever if use_rag else None,
             )
             print("\n📘 Summary:\n")
             print(summary)
