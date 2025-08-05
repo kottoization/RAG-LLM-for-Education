@@ -213,17 +213,14 @@ def main_menu():
         elif choice == "7":
             topic = prompt_input("Enter the topic or material for the cheat sheet: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to cheat sheet generator
-            generator = CheatSheetGenerator(retriever=retriever)
             use_rag = (
                 prompt_input("Enrich cheat sheet with your documents? (y/N): ")
                 .strip()
                 .lower()
                 == "y"
             )
-            cheatsheet = generator.generate_cheatsheet(
-                topic, language=language, use_rag=use_rag, retriever=retriever
-            )
+            generator = CheatSheetGenerator(retriever=retriever if use_rag else None)
+            cheatsheet = generator.generate_cheatsheet(topic, language=language)
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
 
