@@ -337,7 +337,8 @@ def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
-    return summarizer.generate_summary(topic, language=language, use_rag=use_rag)
+    retriever = RAGHandler().get_retriever(k=5) if use_rag else None
+    return summarizer.generate_summary(topic, language=language, retriever=retriever)
 
 
 def run_cheatsheet_interface(topic: str, lang_choice: str) -> str:
