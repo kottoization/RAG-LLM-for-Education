@@ -17,7 +17,6 @@ from FlashcardsModule import FlashcardSet
 from LearningPlanModule import LearningPlan
 from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
 from SummaryModule import StudySummaryGenerator
-from RAGModule import RAGHandler
 from tools.language_handler import LanguageHandler
 
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
@@ -137,7 +136,7 @@ def _format_question(q: dict) -> str:
     return f"**{q['topic']}**\n\n{text}"
 
 
-def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict, str]:
+def start_quiz(subject: str, lang_choice: str) -> tuple[str, dict, str]:
     """Generate quiz questions and return the first one with state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(subject)
@@ -249,19 +248,12 @@ def _render_flashcard(state: dict) -> str:
 
 
 def run_flashcards_generate(
-    topic: str, use_rag: bool, lang_choice: str
+    topic: str, lang_choice: str
 ) -> tuple[str, dict, str, str]:
     """Generate flashcards from a topic and prepare viewer state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
-    retriever = None
-    if use_rag:
-        try:
-            rag = RAGHandler()
-            retriever = rag.get_retriever(k=5)
-        except Exception as e:
-            print(f"[RAG Init Error] {e}")
-    flashcards = FlashcardSet(topic, retriever=retriever)
+    flashcards = FlashcardSet(topic)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         flashcards.generate_from_prompt(topic_prompt=topic, language=language)
@@ -332,13 +324,12 @@ def flashcard_shuffle(state: dict) -> tuple[str, dict, str]:
     return _render_flashcard(state), state, f"1/{len(state['cards'])}"
 
 
-def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
+def run_summary_interface(topic: str, lang_choice: str) -> str:
     """Generate a detailed study summary."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
-    retriever = RAGHandler().get_retriever(k=5) if use_rag else None
-    return summarizer.generate_summary(topic, language=language, retriever=retriever)
+    return summarizer.generate_summary(topic, language=language)
 
 
 def run_cheatsheet_interface(topic: str, lang_choice: str) -> str:
@@ -382,7 +373,6 @@ def build_interface() -> gr.Blocks:
             # Quiz tab
             with gr.TabItem("Generate quiz"):
                 quiz_subject = gr.Textbox(label="Subject")
-                quiz_rag = gr.Checkbox(label="Use RAG", value=False)
                 start_btn = gr.Button("Start Quiz")
                 quiz_question = gr.Markdown()
                 with gr.Row():
@@ -398,7 +388,7 @@ def build_interface() -> gr.Blocks:
 
                 start_btn.click(
                     start_quiz,
-                    [quiz_subject, quiz_rag, lang_select],
+                    [quiz_subject, lang_select],
                     [quiz_question, quiz_state, quiz_result],
                 )
                 btn_a.click(
@@ -443,7 +433,6 @@ def build_interface() -> gr.Blocks:
             with gr.TabItem("Flashcards"):
                 with gr.Accordion("Generate flashcards", open=True):
                     fc_topic = gr.Textbox(label="Topic")
-                    fc_rag = gr.Checkbox(label="Use RAG", value=False)
                     fc_gen_btn = gr.Button("Generate")
                     with gr.Column(elem_id="flashcard-container"):
                         fc_card = gr.Markdown(elem_id="flashcard-content")
@@ -458,7 +447,7 @@ def build_interface() -> gr.Blocks:
 
                     fc_gen_btn.click(
                         run_flashcards_generate,
-                        [fc_topic, fc_rag, lang_select],
+                        [fc_topic, lang_select],
                         [fc_card, fc_state, fc_logs, fc_counter],
                         show_progress=False,
                     )
@@ -500,11 +489,10 @@ def build_interface() -> gr.Blocks:
             # Summary tab
             with gr.TabItem("Summary"):
                 sum_topic = gr.Textbox(label="Topic or material")
-                sum_rag = gr.Checkbox(label="Use RAG", value=False)
                 sum_btn = gr.Button("Generate Summary")
                 sum_output = gr.Textbox(label="Summary", lines=10)
                 sum_btn.click(
-                    run_summary_interface, [sum_topic, sum_rag, lang_select], sum_output
+                    run_summary_interface, [sum_topic, lang_select], sum_output
                 )
 
             # Cheat sheet tab
