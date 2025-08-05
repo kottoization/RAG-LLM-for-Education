@@ -2,7 +2,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from tools.language_handler import LanguageHandler
 from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
-from RAGModule.rag import RAGHandler
 
 # TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect. 
 
@@ -51,30 +50,24 @@ Respond in {language}.
         ) 
 
     def generate_summary(
-        self,
-        input_text: str,
-        language: str = "en",
-        use_rag: bool = False,
-        retriever=None
+        self, input_text: str, language: str = "en", retriever=None
     ) -> str:
         """
         Generate a detailed study summary using the configured LLM and prompt.
-        If ``use_rag`` is True, an external ``retriever`` can be supplied for
-        context; otherwise a new :class:`RAGHandler` will be used.
+        If a ``retriever`` is provided, additional context is fetched and
+        prepended to the prompt.
         """
-        lang = LanguageHandler.choose_or_detect(input_text) if language == "auto" else language
+        lang = (
+            LanguageHandler.choose_or_detect(input_text)
+            if language == "auto"
+            else language
+        )
 
         retriever = retriever or self.retriever
 
         def _fetch_context(inputs):
-            if retriever:
-                """Retrieve additional context using RAG if a retriever is provided."""
-                docs = retriever.get_relevant_documents(inputs["input"])
-                ctx = "\n\n".join([doc.page_content for doc in docs])
-            else:
-                rag = RAGHandler()
-                rag.load_vectorstore()
-                ctx = rag.get_context(inputs["input"], k=3)
+            docs = retriever.get_relevant_documents(inputs["input"])
+            ctx = "\n\n".join([doc.page_content for doc in docs])
             inputs["input"] = f"{ctx}\n\n### Topic:\n{inputs['input']}"
             return inputs
 
@@ -82,11 +75,11 @@ Respond in {language}.
             return inputs
 
         branch = RunnableBranch(
-            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
-            RunnableLambda(_skip_context)
+            (lambda _: retriever is not None, RunnableLambda(_fetch_context)),
+            RunnableLambda(_skip_context),
         )
 
         chain = RunnableSequence(branch, self.base_prompt | self.llm)
 
-        response = chain.invoke({"input": input_text, "language": lang, "use_rag": use_rag})
+        response = chain.invoke({"input": input_text, "language": lang})
         return response.content
