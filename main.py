@@ -134,7 +134,9 @@ def main_menu():
                 == "y"
             )
             generate_quiz(
-                subject, language=language, use_rag=use_rag, retriever=retriever
+                subject,
+                language=language,
+                retriever=retriever if use_rag else None,
             )
 
         elif choice == "3":
@@ -153,7 +155,9 @@ def main_menu():
                     == "y"
                 )
                 quiz_results = generate_quiz(
-                    subject, language=language, use_rag=use_rag, retriever=retriever
+                    subject,
+                    language=language,
+                    retriever=retriever if use_rag else None,
                 )
                 user_name = prompt_input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)

@@ -8,22 +8,16 @@ from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.language_handler import LanguageHandler
-from RAGModule.rag import RAGHandler
 from tools.auto_answer import auto_answer
 
 
-def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = False, retriever=None) -> list[dict]:
+def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -> list[dict]:
     """Return a list of quiz questions without running an interactive loop."""
     llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
     context = ""
-    if use_rag:
-        if retriever:
-            docs = retriever.get_relevant_documents(subject)
-        else:
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            docs = rag.semantic_search(subject, k=3)
+    if retriever:
+        docs = retriever.get_relevant_documents(subject)
         context = "\n\n".join([doc.page_content for doc in docs])
 
     prompt_subject = subject
@@ -46,19 +40,19 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
     questions_per_topic = max_questions // max_topics
 
     # Generate questions in parallel
-    if use_rag:
-        if retriever:
-            context_chain = RunnableLambda(
-                lambda inputs: "\n\n".join(
-                    [doc.page_content for doc in retriever.get_relevant_documents(inputs["topic"])]
-                )
+    if retriever:
+        context_chain = RunnableLambda(
+            lambda inputs: "\n\n".join(
+                [
+                    doc.page_content
+                    for doc in retriever.get_relevant_documents(inputs["topic"])
+                ]
             )
-        else:
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            context_chain = RunnableLambda(lambda inputs: rag.get_context(inputs["topic"], k=3))
+        )
         prompt_chain = RunnableLambda(
-            lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
+            lambda inputs: generate_questions_prompt(
+                inputs["topic"], language=language
+            ).format_prompt(topic=inputs["topic"])
         )
         question_chain = (
             RunnableParallel({"ctx": context_chain, "prompt": prompt_chain})
@@ -67,7 +61,9 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
         )
     else:
         question_chain = RunnableLambda(
-            lambda inputs: generate_questions_prompt(inputs["topic"], language=language).format_prompt(topic=inputs["topic"])
+            lambda inputs: generate_questions_prompt(
+                inputs["topic"], language=language
+            ).format_prompt(topic=inputs["topic"])
         ) | llm
 
     question_sets = question_chain.batch([{"topic": t} for t in topics])
@@ -83,10 +79,12 @@ def prepare_quiz_questions(subject: str, language: str = "en", use_rag: bool = F
 
     return questions_list
 
-def generate_quiz(subject: str, language: str = "en", use_rag: bool = False, retriever=None):
+def generate_quiz(subject: str, language: str = "en", retriever=None):
     """Run an interactive quiz in the terminal and return the results."""
     try:
-        questions = prepare_quiz_questions(subject, language=language, use_rag=use_rag, retriever=retriever)
+        questions = prepare_quiz_questions(
+            subject, language=language, retriever=retriever
+        )
         if not questions:
             print("\u26a0\ufe0f No quiz topics generated.")
             return {}
