@@ -9,7 +9,6 @@ from AgentModule.edu_agent import run_agent
 from frontend_service import launch_gradio
 from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
-from RAGModule import RAGHandler
 import os
 import warnings
 from langchain_core._api import LangChainDeprecationWarning
@@ -38,33 +37,16 @@ def prompt_input(prompt: str) -> str:
 
 
 def chat_with_bot():
-    """Chat with the assistant. Optionally use RAG for document context."""
+    """Chat with the assistant."""
     try:
-        use_rag = (
-            prompt_input("Enrich answers with your documents? (y/N): ").strip().lower()
-            == "y"
-        )
-
         chat_history = []
-
-        if use_rag:
-            rag = RAGHandler()
-            rag.load_vectorstore()
-            print(
-                "RAG mode enabled. You can now chat with the bot. Type 'exit' or 'q' to quit."
-            )
-        else:
-            rag = None
-            print("You can now chat with the bot. Type 'exit' or 'q' to quit.")
+        print("You can now chat with the bot. Type 'exit' or 'q' to quit.")
 
         while True:
             query = prompt_input("You: ")
             if query.lower() in ["exit", "q"]:
                 break
 
-            if use_rag and rag:
-                # Pre-load vector store so the agent can query documents
-                pass
             language = LanguageHandler.choose_or_detect(query)
             answer, used_fallback = run_agent(
                 query, executor=_agent, return_details=True
@@ -92,13 +74,8 @@ def main_menu():
     """
     Main menu for the application.
     """
-    # Initialize RAG handler and retriever (optional)
-    try:
-        rag = RAGHandler()
-        retriever = rag.get_retriever(k=5)
-    except Exception as e:
-        print(f"[RAG Init Error] {e}")
-        retriever = None
+    # TODO: Re-integrate RAG retriever initialization here in the future
+    retriever = None
 
     while True:
         print("\nSelect an option:")
@@ -128,14 +105,7 @@ def main_menu():
         elif choice == "2":
             subject = prompt_input("Enter the subject for the quiz: ")
             language = LanguageHandler.choose_or_detect(subject)
-            # pass retriever to quiz (RAG-enabled if available)
-            use_rag = (
-                prompt_input("Use RAG to generate quiz topics? (y/N): ").strip().lower()
-                == "y"
-            )
-            generate_quiz(
-                subject, language=language, use_rag=use_rag, retriever=retriever
-            )
+            generate_quiz(subject, language=language, retriever=retriever)
 
         elif choice == "3":
             print("\nSelect an option:")
@@ -146,14 +116,8 @@ def main_menu():
             if sub_choice == "1":
                 subject = prompt_input("Enter the subject for the quiz: ")
                 language = LanguageHandler.choose_or_detect(subject)
-                use_rag = (
-                    prompt_input("Use RAG to generate quiz topics? (y/N): ")
-                    .strip()
-                    .lower()
-                    == "y"
-                )
                 quiz_results = generate_quiz(
-                    subject, language=language, use_rag=use_rag, retriever=retriever
+                    subject, language=language, retriever=retriever
                 )
                 user_name = prompt_input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
@@ -176,19 +140,9 @@ def main_menu():
         elif choice == "4":
             topic = prompt_input("Enter a topic for flashcard generation: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to flashcards
             flashcards = FlashcardSet(topic, retriever=retriever)
-            use_rag = (
-                prompt_input("Enrich flashcards with your documents? (y/N): ")
-                .strip()
-                .lower()
-                == "y"
-            )
             flashcards.generate_from_prompt(
-                topic_prompt=topic,
-                language=language,
-                use_rag=use_rag,
-                retriever=retriever,
+                topic_prompt=topic, language=language, retriever=retriever
             )
             print(flashcards.to_dict_list())
             flashcards.save_to_file()
@@ -202,16 +156,9 @@ def main_menu():
         elif choice == "6":
             topic = prompt_input("Enter the topic or material for TL;DR summary: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to summary
             summarizer = StudySummaryGenerator(retriever=retriever)
-            use_rag = (
-                prompt_input("Enrich summary with your documents? (y/N): ")
-                .strip()
-                .lower()
-                == "y"
-            )
             summary = summarizer.generate_summary(
-                topic, language=language, use_rag=use_rag, retriever=retriever
+                topic, language=language, retriever=retriever
             )
             print("\n📘 Summary:\n")
             print(summary)
@@ -219,16 +166,9 @@ def main_menu():
         elif choice == "7":
             topic = prompt_input("Enter the topic or material for the cheat sheet: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to cheat sheet generator
             generator = CheatSheetGenerator(retriever=retriever)
-            use_rag = (
-                prompt_input("Enrich cheat sheet with your documents? (y/N): ")
-                .strip()
-                .lower()
-                == "y"
-            )
             cheatsheet = generator.generate_cheatsheet(
-                topic, language=language, use_rag=use_rag, retriever=retriever
+                topic, language=language, retriever=retriever
             )
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
