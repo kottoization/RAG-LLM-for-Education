@@ -33,7 +33,7 @@ class FlashcardSet:
     def __init__(self, topic: str, flashcards=None, retriever=None):
         self.topic = topic.strip()
         self.flashcards = flashcards if flashcards else []
-        self.retriever = retriever  # optional RAG retriever
+        self.retriever = retriever  # optional document retriever
 
     def add_flashcard(self, flashcard: Flashcard):
         self.flashcards.append(flashcard)
