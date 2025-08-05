@@ -7,12 +7,15 @@ from tools.quiz_prompts import generate_topic_list_prompt, generate_questions_pr
 from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
-from tools.language_handler import LanguageHandler
 from tools.auto_answer import auto_answer
 
 
 def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -> list[dict]:
-    """Return a list of quiz questions without running an interactive loop."""
+    """Return generated quiz questions.
+
+    If a ``retriever`` is supplied, relevant context is fetched and appended to the
+    prompt before question generation.
+    """
     llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
     context = ""
@@ -80,7 +83,11 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
     return questions_list
 
 def generate_quiz(subject: str, language: str = "en", retriever=None):
-    """Run an interactive quiz in the terminal and return the results."""
+    """Run an interactive quiz in the terminal and return the results.
+
+    A ``retriever`` may be provided to enrich question prompts with additional
+    context.
+    """
     try:
         questions = prepare_quiz_questions(
             subject, language=language, retriever=retriever
