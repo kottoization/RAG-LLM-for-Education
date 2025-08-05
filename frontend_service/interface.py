@@ -334,12 +334,12 @@ def run_summary_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
     return summarizer.generate_summary(topic, language=language, use_rag=use_rag)
 
 
-def run_cheatsheet_interface(topic: str, use_rag: bool, lang_choice: str) -> str:
+def run_cheatsheet_interface(topic: str, lang_choice: str) -> str:
     """Generate a cheat sheet."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     generator = CheatSheetGenerator()
-    return generator.generate_cheatsheet(topic, language=language, use_rag=use_rag)
+    return generator.generate_cheatsheet(topic, language=language)
 
 
 def build_interface() -> gr.Blocks:
@@ -503,11 +503,10 @@ def build_interface() -> gr.Blocks:
             # Cheat sheet tab
             with gr.TabItem("Cheat sheet"):
                 cs_topic = gr.Textbox(label="Topic or material")
-                cs_rag = gr.Checkbox(label="Use RAG", value=False)
                 cs_btn = gr.Button("Generate Cheat Sheet")
                 cs_output = gr.Textbox(label="Cheat Sheet", lines=10)
                 cs_btn.click(
-                    run_cheatsheet_interface, [cs_topic, cs_rag, lang_select], cs_output
+                    run_cheatsheet_interface, [cs_topic, lang_select], cs_output
                 )
 
     return demo
