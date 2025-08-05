@@ -149,7 +149,9 @@ def main_menu():
             topic = prompt_input("Enter the topic or material for TL;DR summary: ")
             language = LanguageHandler.choose_or_detect(topic)
             summarizer = StudySummaryGenerator()
-            summary = summarizer.generate_summary(topic, language=language)
+            summary = summarizer.generate_summary(
+                topic, language=language, retriever=None
+            )
             print("\n📘 Summary:\n")
             print(summary)
 
