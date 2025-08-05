@@ -329,7 +329,7 @@ def run_summary_interface(topic: str, lang_choice: str) -> str:
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator()
-    return summarizer.generate_summary(topic, language=language)
+    return summarizer.generate_summary(topic, language=language, retriever=None)
 
 
 def run_cheatsheet_interface(topic: str, lang_choice: str) -> str:
