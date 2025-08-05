@@ -176,20 +176,14 @@ def main_menu():
         elif choice == "4":
             topic = prompt_input("Enter a topic for flashcard generation: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to flashcards
-            flashcards = FlashcardSet(topic, retriever=retriever)
             use_rag = (
                 prompt_input("Enrich flashcards with your documents? (y/N): ")
                 .strip()
                 .lower()
                 == "y"
             )
-            flashcards.generate_from_prompt(
-                topic_prompt=topic,
-                language=language,
-                use_rag=use_rag,
-                retriever=retriever,
-            )
+            flashcards = FlashcardSet(topic, retriever=retriever if use_rag else None)
+            flashcards.generate_from_prompt(topic_prompt=topic, language=language)
             print(flashcards.to_dict_list())
             flashcards.save_to_file()
 

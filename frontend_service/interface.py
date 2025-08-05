@@ -17,6 +17,7 @@ from FlashcardsModule import FlashcardSet
 from LearningPlanModule import LearningPlan
 from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
 from SummaryModule import StudySummaryGenerator
+from RAGModule import RAGHandler
 from tools.language_handler import LanguageHandler
 
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
@@ -253,12 +254,17 @@ def run_flashcards_generate(
     """Generate flashcards from a topic and prepare viewer state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
-    flashcards = FlashcardSet(topic)
+    retriever = None
+    if use_rag:
+        try:
+            rag = RAGHandler()
+            retriever = rag.get_retriever(k=5)
+        except Exception as e:
+            print(f"[RAG Init Error] {e}")
+    flashcards = FlashcardSet(topic, retriever=retriever)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        flashcards.generate_from_prompt(
-            topic_prompt=topic, language=language, use_rag=use_rag
-        )
+        flashcards.generate_from_prompt(topic_prompt=topic, language=language)
         path = flashcards.save_to_file()
     logs = buffer.getvalue()
     if path:

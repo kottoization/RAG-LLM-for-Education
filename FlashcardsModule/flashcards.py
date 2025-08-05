@@ -3,11 +3,8 @@ import os
 import re
 from datetime import datetime
 
-from langchain.chains import RetrievalQA
-from langchain.schema.runnable import RunnableBranch, RunnableLambda, RunnableSequence
+from langchain.schema.runnable import RunnableLambda
 from langchain_openai import ChatOpenAI
-
-from RAGModule.rag import RAGHandler
 from tools.auto_answer import auto_answer
 
 
@@ -65,35 +62,20 @@ class FlashcardSet:
         self,
         topic_prompt: str,
         language: str = "en",
-        use_rag: bool = False,
         retriever=None,
     ):
         """
-        Uses an LLM (optionally with RAG) to generate flashcards based on a topic prompt.
-        When ``use_rag`` is True, additional context from your indexed documents is
-        fetched and prepended to the prompt. If a ``retriever`` was supplied and
-        ``use_rag`` is ``True``, it is used via ``RetrievalQA`` for generation.
+        Uses an LLM to generate flashcards based on a topic prompt.
+        If a ``retriever`` is supplied (or the set has one), relevant documents are
+        fetched and prepended to the prompt as context.
         """
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
         retriever = retriever or self.retriever
 
-        def _fetch_context(inputs):
-            if retriever:
-                docs = retriever.get_relevant_documents(inputs["topic_prompt"])
-                ctx = "\n\n".join([doc.page_content for doc in docs])
-            else:
-                rag = RAGHandler()
-                rag.load_vectorstore()
-                ctx = rag.get_context(inputs["topic_prompt"], k=3)
-            return {**inputs, "context": ctx}
-
-        def _skip_context(inputs):
-            return {**inputs, "context": ""}
-
-        branch = RunnableBranch(
-            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
-            RunnableLambda(_skip_context),
-        )
+        ctx = ""
+        if retriever:
+            docs = retriever.get_relevant_documents(topic_prompt)
+            ctx = "\n\n".join(d.page_content for d in docs)
 
         def _build_prompt(inputs):
             context = inputs["context"]
@@ -117,24 +99,17 @@ class FlashcardSet:
             )
             return prompt
 
-        chain = RunnableSequence(branch, RunnableLambda(_build_prompt) | llm)
+        chain = RunnableLambda(_build_prompt) | llm
 
         try:
-            # Use any available retriever only when RAG is enabled
-            if use_rag and retriever:
-                qa = RetrievalQA.from_chain_type(
-                    llm=llm, chain_type="stuff", retriever=retriever
-                )
-                raw_output = qa.run(topic_prompt)
-            else:
-                response = chain.invoke(
-                    {
-                        "topic_prompt": topic_prompt,
-                        "language": language,
-                        "use_rag": use_rag,
-                    }
-                )
-                raw_output = response.content
+            response = chain.invoke(
+                {
+                    "topic_prompt": topic_prompt,
+                    "language": language,
+                    "context": ctx,
+                }
+            )
+            raw_output = response.content
 
             pairs = re.findall(
                 r"(?:\d+\.\s*)?Q:\s*(.+?)\s*A:\s*(.+?)(?=\s*(?:\d+\.\s*)?Q:|\Z)",
