@@ -136,12 +136,14 @@ def _format_question(q: dict) -> str:
     return f"**{q['topic']}**\n\n{text}"
 
 
-def start_quiz(subject: str, lang_choice: str) -> tuple[str, dict, str]:
+def start_quiz(
+    subject: str, lang_choice: str, retriever=None
+) -> tuple[str, dict, str]:
     """Generate quiz questions and return the first one with state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(subject)
     questions = prepare_quiz_questions(
-        subject, language=language, retriever=None
+        subject, language=language, retriever=retriever
     )
     if not questions:
         return "Failed to generate quiz.", {}, ""
@@ -250,16 +252,16 @@ def _render_flashcard(state: dict) -> str:
 
 
 def run_flashcards_generate(
-    topic: str, lang_choice: str
+    topic: str, lang_choice: str, retriever=None
 ) -> tuple[str, dict, str, str]:
     """Generate flashcards from a topic and prepare viewer state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
-    flashcards = FlashcardSet(topic, retriever=None)
+    flashcards = FlashcardSet(topic, retriever=retriever)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         flashcards.generate_from_prompt(
-            topic_prompt=topic, language=language, retriever=None
+            topic_prompt=topic, language=language, retriever=retriever
         )
         path = flashcards.save_to_file()
     logs = buffer.getvalue()
@@ -270,7 +272,6 @@ def run_flashcards_generate(
     first = _render_flashcard(state)
     progress = f"1/{len(cards)}" if cards else "0/0"
     return first, state, logs, progress
-
 
 def run_flashcards_review(path: str) -> tuple[str, dict, str]:
     """Load flashcards from file for interactive review."""
@@ -328,22 +329,20 @@ def flashcard_shuffle(state: dict) -> tuple[str, dict, str]:
     return _render_flashcard(state), state, f"1/{len(state['cards'])}"
 
 
-def run_summary_interface(topic: str, lang_choice: str) -> str:
+def run_summary_interface(topic: str, lang_choice: str, retriever=None) -> str:
     """Generate a detailed study summary."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
-    summarizer = StudySummaryGenerator()
-    return summarizer.generate_summary(topic, language=language, retriever=None)
+    summarizer = StudySummaryGenerator(retriever=retriever)
+    return summarizer.generate_summary(topic, language=language)
 
 
-def run_cheatsheet_interface(topic: str, lang_choice: str) -> str:
+def run_cheatsheet_interface(topic: str, lang_choice: str, retriever=None) -> str:
     """Generate a cheat sheet."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
-    generator = CheatSheetGenerator()
-    return generator.generate_cheatsheet(
-        topic, language=language, retriever=None
-    )
+    generator = CheatSheetGenerator(retriever=retriever)
+    return generator.generate_cheatsheet(topic, language=language)
 
 
 def build_interface() -> gr.Blocks:
