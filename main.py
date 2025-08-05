@@ -10,12 +10,19 @@ from frontend_service import launch_gradio
 from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 import os
+import sys
 import warnings
 from langchain_core._api import LangChainDeprecationWarning
 
 # Load environment variables from .env
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path)
+
+# Ensure the OpenAI API key is set before continuing
+if not os.getenv("OPENAI_API_KEY"):
+    print("Error: OPENAI_API_KEY environment variable is not set. "
+          "Please set it before running the application.")
+    sys.exit(1)
 
 warnings.filterwarnings(
     "ignore",
