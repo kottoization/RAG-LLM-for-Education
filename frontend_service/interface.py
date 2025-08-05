@@ -140,7 +140,9 @@ def start_quiz(subject: str, lang_choice: str) -> tuple[str, dict, str]:
     """Generate quiz questions and return the first one with state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(subject)
-    questions = prepare_quiz_questions(subject, language=language)
+    questions = prepare_quiz_questions(
+        subject, language=language, retriever=None
+    )
     if not questions:
         return "Failed to generate quiz.", {}, ""
     state = {
@@ -253,10 +255,12 @@ def run_flashcards_generate(
     """Generate flashcards from a topic and prepare viewer state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
-    flashcards = FlashcardSet(topic)
+    flashcards = FlashcardSet(topic, retriever=None)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        flashcards.generate_from_prompt(topic_prompt=topic, language=language)
+        flashcards.generate_from_prompt(
+            topic_prompt=topic, language=language, retriever=None
+        )
         path = flashcards.save_to_file()
     logs = buffer.getvalue()
     if path:
@@ -337,7 +341,9 @@ def run_cheatsheet_interface(topic: str, lang_choice: str) -> str:
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     generator = CheatSheetGenerator()
-    return generator.generate_cheatsheet(topic, language=language)
+    return generator.generate_cheatsheet(
+        topic, language=language, retriever=None
+    )
 
 
 def build_interface() -> gr.Blocks:
