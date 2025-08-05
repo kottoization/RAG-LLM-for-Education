@@ -13,7 +13,7 @@ class StudySummaryGenerator:
 
     def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5, retriever=None):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
-        self.retriever = retriever
+        self.retriever = retriever  # optional document retriever
 
         self.base_prompt = PromptTemplate.from_template(
             """
