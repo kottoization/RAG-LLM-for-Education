@@ -46,29 +46,10 @@ def calculator(expression: str) -> str:
         return f"Error evaluating expression: {e}"
 
 
-from RAGModule.rag import RAGHandler
-
-_rag = None
-
-def _get_rag() -> RAGHandler:
-    global _rag
-    if _rag is None:
-        _rag = RAGHandler()
-        try:
-            _rag.load_vectorstore()
-        except Exception:
-            pass
-    return _rag
-
-
 @tool
-def document_search(query: str) -> str:
-    """Answer a question using documents indexed by the system."""
-    rag = _get_rag()
-    try:
-        return rag.answer(query)
-    except Exception as e:  # pragma: no cover - LLM errors
-        return f"Error using RAG: {e}"
+def document_search(_: str) -> str:
+    """Placeholder for document search functionality."""
+    return "Document search not implemented"
 
 
 @tool
