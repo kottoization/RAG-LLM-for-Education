@@ -260,7 +260,9 @@ def run_flashcards_generate(
     flashcards = FlashcardSet(topic, retriever=retriever)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        flashcards.generate_from_prompt(topic_prompt=topic, language=language)
+        flashcards.generate_from_prompt(
+            topic_prompt=topic, language=language, retriever=retriever
+        )
         path = flashcards.save_to_file()
     logs = buffer.getvalue()
     if path:
@@ -270,7 +272,6 @@ def run_flashcards_generate(
     first = _render_flashcard(state)
     progress = f"1/{len(cards)}" if cards else "0/0"
     return first, state, logs, progress
-
 
 def run_flashcards_review(path: str) -> tuple[str, dict, str]:
     """Load flashcards from file for interactive review."""

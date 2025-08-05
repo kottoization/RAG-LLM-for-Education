@@ -70,9 +70,8 @@ def chat_with_bot():
 
 
 def main_menu():
-    """
-    Main menu for the application.
-    """
+    """Main menu for the application."""
+    # TODO: integrate RAG retriever when available
     while True:
         print("\nSelect an option:")
         print("0. Set preferred language")
@@ -101,7 +100,7 @@ def main_menu():
         elif choice == "2":
             subject = prompt_input("Enter the subject for the quiz: ")
             language = LanguageHandler.choose_or_detect(subject)
-            generate_quiz(subject, language=language)
+            generate_quiz(subject, language=language, retriever=None)
 
         elif choice == "3":
             print("\nSelect an option:")
@@ -112,11 +111,13 @@ def main_menu():
             if sub_choice == "1":
                 subject = prompt_input("Enter the subject for the quiz: ")
                 language = LanguageHandler.choose_or_detect(subject)
-                quiz_results = generate_quiz(subject, language=language)
+                quiz_results = generate_quiz(
+                    subject, language=language, retriever=None
+                )
                 user_name = prompt_input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
             elif sub_choice == "2":
-                user_name = prompt_input("Enter your name: ")  # TODO: consider deleting
+                user_name = prompt_input("Enter your name: ")
                 goals_input = prompt_input(
                     "Enter your learning goals (comma-separated): "
                 )
@@ -134,9 +135,10 @@ def main_menu():
         elif choice == "4":
             topic = prompt_input("Enter a topic for flashcard generation: ")
             language = LanguageHandler.choose_or_detect(topic)
-            flashcards = FlashcardSet(topic)
-            flashcards.generate_from_prompt(topic_prompt=topic, language=language)
-            print(flashcards.to_dict_list())
+            flashcards = FlashcardSet(topic, retriever=None)
+            flashcards.generate_from_prompt(
+                topic_prompt=topic, language=language, retriever=None
+            )
             flashcards.save_to_file()
 
         elif choice == "5":
@@ -159,7 +161,9 @@ def main_menu():
             topic = prompt_input("Enter the topic or material for the cheat sheet: ")
             language = LanguageHandler.choose_or_detect(topic)
             generator = CheatSheetGenerator()
-            cheatsheet = generator.generate_cheatsheet(topic, language=language)
+            cheatsheet = generator.generate_cheatsheet(
+                topic, language=language, retriever=None
+            )
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
 
