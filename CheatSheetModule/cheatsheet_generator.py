@@ -63,6 +63,7 @@ Respond only in {language}.
         retriever = retriever or self.retriever
 
         ctx = ""
+        # Perform retrieval-augmented generation only when a retriever is provided
         if retriever:
             docs = retriever.get_relevant_documents(input_text)
             ctx = "\n\n".join(d.page_content for d in docs)
