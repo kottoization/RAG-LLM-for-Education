@@ -119,7 +119,7 @@ def main_menu():
                 user_name = prompt_input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
             elif sub_choice == "2":
-                user_name = prompt_input("Enter your name: ")  # TODO: consider deleting
+                user_name = prompt_input("Enter your name: ")
                 goals_input = prompt_input(
                     "Enter your learning goals (comma-separated): "
                 )
@@ -141,7 +141,6 @@ def main_menu():
             flashcards.generate_from_prompt(
                 topic_prompt=topic, language=language, retriever=None
             )
-            print(flashcards.to_dict_list())
             flashcards.save_to_file()
 
         elif choice == "5":
