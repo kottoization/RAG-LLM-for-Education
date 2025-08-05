@@ -75,10 +75,10 @@ def _get_rag() -> RAGHandler:
 
 @tool
 def document_search(query: str) -> str:
-    """Answer a question using documents indexed by the system."""
+    """Return text snippets relevant to ``query`` from the document index."""
     rag = _get_rag()
     try:
-        return rag.answer(query, use_rerank=True)
+        return rag.document_search(query, use_rerank=True)
     except Exception as e:  # pragma: no cover - LLM errors
         return f"Error using RAG: {e}"
 

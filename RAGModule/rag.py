@@ -43,8 +43,9 @@ class RAGHandler:
         max_retries: int = 5,
     ):
         # 📂 Paths and basic setup
-        self.rag_path = Path(rag_files_path)
-        self.persist_dir = persist_directory
+        # Resolve paths so manifest comparisons remain stable across runs
+        self.rag_path = Path(rag_files_path).resolve()
+        self.persist_dir = Path(persist_directory).resolve()
         os.makedirs(self.rag_path, exist_ok=True)
         os.makedirs(self.persist_dir, exist_ok=True)
 
@@ -135,14 +136,16 @@ class RAGHandler:
     # ------------------------------------------------------------------
     def _manifest_path(self) -> Path:
         """Return path to the manifest file."""
-        return Path(self.persist_dir) / "manifest.json"
+        return self.persist_dir / "manifest.json"
 
     def _scan_manifest(self) -> dict:
         """Scan ``rag_path`` and return a mapping of file paths to mtimes."""
         manifest = {}
         for pattern in ("*.txt", "*.pdf", "*.csv"):
             for p in self.rag_path.rglob(pattern):
-                manifest[str(p)] = p.stat().st_mtime
+                # Store paths relative to rag_path using POSIX separators
+                rel = p.relative_to(self.rag_path).as_posix()
+                manifest[rel] = p.stat().st_mtime
         return manifest
 
     def _load_manifest(self) -> dict:
@@ -291,7 +294,7 @@ class RAGHandler:
 
         vectordb = Chroma(
             embedding_function=self.embeddings,
-            persist_directory=self.persist_dir,
+            persist_directory=str(self.persist_dir),
             client_settings=client_settings,
         )
 
@@ -307,7 +310,11 @@ class RAGHandler:
                 )
                 continue
             processed = min(start_idx + batch_size, total)
-            print(f"🔄 Embedded {processed}/{total} chunks", end="\r")
+            print(
+                f"🔄 Embedded {processed}/{total} chunks",
+                end="\r",
+                flush=True,
+            )
         print()
 
         if persist:
@@ -342,13 +349,13 @@ class RAGHandler:
         """
         self._init_embeddings()
         if self.vectordb is None:
-            db_path = Path(self.persist_dir) / "chroma.sqlite3"
+            db_path = self.persist_dir / "chroma.sqlite3"
             rebuild = self._needs_rebuild()
             try:
                 if db_path.exists() and not rebuild:
                     self.vectordb = Chroma(
                         embedding_function=self.embeddings,
-                        persist_directory=self.persist_dir,
+                        persist_directory=str(self.persist_dir),
                     )
                     try:
                         # Empty or inconsistent collection -> rebuild
@@ -408,6 +415,19 @@ class RAGHandler:
         except Exception as e:
             print(f"❌ Error during semantic search: {e}")
             return []
+
+    def search_documents(
+        self, query: str, k: int = 3, use_rerank: bool = False
+    ) -> List[str]:
+        """Return raw text for the top-k documents matching ``query``."""
+        docs = self.semantic_search(query, k=k, use_rerank=use_rerank)
+        return [doc.page_content for doc in docs]
+
+    def document_search(
+        self, query: str, k: int = 3, use_rerank: bool = False
+    ) -> str:
+        """Convenience wrapper returning concatenated relevant text."""
+        return "\n\n".join(self.search_documents(query, k=k, use_rerank=use_rerank))
 
     def get_context(self, query: str, k: int = 3, use_rerank: bool = False) -> str:
         """
