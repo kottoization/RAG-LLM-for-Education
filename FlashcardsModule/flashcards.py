@@ -4,10 +4,7 @@ import re
 from datetime import datetime
 
 from langchain.chains import RetrievalQA
-from langchain.schema.runnable import RunnableBranch, RunnableLambda, RunnableSequence
 from langchain_openai import ChatOpenAI
-
-from RAGModule.rag import RAGHandler
 from tools.auto_answer import auto_answer
 
 
@@ -60,80 +57,47 @@ class FlashcardSet:
                     )
             except Exception as e:
                 print(f"⚠️ Error parsing block: {e}")
-
     def generate_from_prompt(
-        self,
-        topic_prompt: str,
-        language: str = "en",
-        use_rag: bool = False,
-        retriever=None,
+        self, topic_prompt: str, language: str = "en", retriever=None
     ):
-        """
-        Uses an LLM (optionally with RAG) to generate flashcards based on a topic prompt.
-        When ``use_rag`` is True, additional context from your indexed documents is
-        fetched and prepended to the prompt. If a ``retriever`` was supplied and
-        ``use_rag`` is ``True``, it is used via ``RetrievalQA`` for generation.
+        """Generate flashcards from a topic prompt.
+
+        Additional context is fetched only when a ``retriever`` is provided.
         """
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
         retriever = retriever or self.retriever
 
-        def _fetch_context(inputs):
-            if retriever:
-                docs = retriever.get_relevant_documents(inputs["topic_prompt"])
-                ctx = "\n\n".join([doc.page_content for doc in docs])
-            else:
-                rag = RAGHandler()
-                rag.load_vectorstore()
-                ctx = rag.get_context(inputs["topic_prompt"], k=3)
-            return {**inputs, "context": ctx}
+        context = ""
+        if retriever:
+            docs = retriever.get_relevant_documents(topic_prompt)
+            context = "\n\n".join([doc.page_content for doc in docs])
 
-        def _skip_context(inputs):
-            return {**inputs, "context": ""}
-
-        branch = RunnableBranch(
-            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
-            RunnableLambda(_skip_context),
+        prompt = ""
+        if context:
+            prompt += context + "\n\n"
+        prompt += (
+            "You are an expert educator preparing students for a rigorous test or exam.\n"
+            f'Generate a high-quality, detailed list of flashcards for the topic: "{topic_prompt}".\n'
+            "The flashcards should include:\n"
+            "- definitions of core concepts\n"
+            "- names and explanations of key theorems or formulas\n"
+            "- concrete, technical facts that are often tested\n"
+            "- pay attention to the detailed domain knowledge needed by specialists at the level indicated by the user\n"
+            "Each flashcard must follow this format:\n"
+            "Q: [Clear, technical question]\n"
+            "A: [Precise, exam-focused answer]\n\n"
+            "Don't include explanations, examples, or anything besides flashcards.\n"
+            f"Respond in {language}."
         )
 
-        def _build_prompt(inputs):
-            context = inputs["context"]
-            topic = inputs["topic_prompt"]
-            prompt = ""
-            if context:
-                prompt += context + "\n\n"
-            prompt += (
-                f"You are an expert educator preparing students for a rigorous test or exam.\n"
-                f'Generate a high-quality, detailed list of flashcards for the topic: "{topic}".\n'
-                f"The flashcards should include:\n"
-                f"- definitions of core concepts\n"
-                f"- names and explanations of key theorems or formulas\n"
-                f"- concrete, technical facts that are often tested\n"
-                f"- pay attention to the detailed domain knowledge needed by specialists at the level indicated by the user\n"
-                f"Each flashcard must follow this format:\n"
-                f"Q: [Clear, technical question]\n"
-                f"A: [Precise, exam-focused answer]\n\n"
-                f"Don't include explanations, examples, or anything besides flashcards.\n"
-                f"Respond in {inputs['language']}."
-            )
-            return prompt
-
-        chain = RunnableSequence(branch, RunnableLambda(_build_prompt) | llm)
-
         try:
-            # Use any available retriever only when RAG is enabled
-            if use_rag and retriever:
+            if retriever:
                 qa = RetrievalQA.from_chain_type(
                     llm=llm, chain_type="stuff", retriever=retriever
                 )
                 raw_output = qa.run(topic_prompt)
             else:
-                response = chain.invoke(
-                    {
-                        "topic_prompt": topic_prompt,
-                        "language": language,
-                        "use_rag": use_rag,
-                    }
-                )
+                response = llm.invoke(prompt)
                 raw_output = response.content
 
             pairs = re.findall(

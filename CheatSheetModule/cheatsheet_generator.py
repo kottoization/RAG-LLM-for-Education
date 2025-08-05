@@ -1,7 +1,5 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from langchain.schema.runnable import RunnableLambda, RunnableBranch, RunnableSequence
-from RAGModule.rag import RAGHandler
 
 # TODO: test and optimize
 
@@ -46,51 +44,27 @@ Respond only in {language}.
         )
 
     def generate_cheatsheet(
-        self,
-        input_text: str,
-        language: str = "en",
-        use_rag: bool = False,
-        retriever=None
+        self, input_text: str, language: str = "en", retriever=None
     ) -> str:
-        """
-        Generate a cheat sheet; uses RAG if use_rag=True.
+        """Generate a cheat sheet.
+
+        Additional context is fetched only when a ``retriever`` is provided.
 
         Args:
             input_text: topic or material for which to generate the cheat sheet
             language: language code for the output
-            use_rag: if True, fetch additional context from your documents
-            retriever: optional external retriever to supply that context
+            retriever: optional external retriever to supply context
 
         Returns:
             Generated cheat sheet as string.
         """
         retriever = retriever or self.retriever
 
-        def _fetch_context(inputs):
-            if retriever:
-                docs = retriever.get_relevant_documents(inputs["input"])
-                ctx = "\n\n".join([doc.page_content for doc in docs])
+        context = ""
+        if retriever:
+            docs = retriever.get_relevant_documents(input_text)
+            context = "\n\n".join([doc.page_content for doc in docs])
 
-            else:
-                rag = RAGHandler()
-                rag.load_vectorstore()
-                ctx = rag.get_context(inputs["input"], k=3)
-            return {
-                "input": inputs["input"],
-                "language": inputs["language"],
-                "context": ctx,
-            }
-
-
-        def _skip_context(inputs):
-            return {"input": inputs["input"], "language": inputs["language"], "context": ""}
-
-        branch = RunnableBranch(
-            (lambda d: d.get("use_rag", False), RunnableLambda(_fetch_context)),
-            RunnableLambda(_skip_context)
-        )
-
-        chain = RunnableSequence(branch, self.prompt | self.llm)
-
-        response = chain.invoke({"input": input_text, "language": language, "use_rag": use_rag})
+        inputs = {"input": input_text, "language": language, "context": context}
+        response = (self.prompt | self.llm).invoke(inputs)
         return response.content

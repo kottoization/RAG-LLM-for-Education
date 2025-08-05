@@ -134,7 +134,9 @@ def main_menu():
                 == "y"
             )
             generate_quiz(
-                subject, language=language, use_rag=use_rag, retriever=retriever
+                subject,
+                language=language,
+                retriever=retriever if use_rag else None,
             )
 
         elif choice == "3":
@@ -153,7 +155,9 @@ def main_menu():
                     == "y"
                 )
                 quiz_results = generate_quiz(
-                    subject, language=language, use_rag=use_rag, retriever=retriever
+                    subject,
+                    language=language,
+                    retriever=retriever if use_rag else None,
                 )
                 user_name = prompt_input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
@@ -176,19 +180,19 @@ def main_menu():
         elif choice == "4":
             topic = prompt_input("Enter a topic for flashcard generation: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to flashcards
-            flashcards = FlashcardSet(topic, retriever=retriever)
             use_rag = (
                 prompt_input("Enrich flashcards with your documents? (y/N): ")
                 .strip()
                 .lower()
                 == "y"
             )
+            flashcards = FlashcardSet(
+                topic, retriever=retriever if use_rag else None
+            )
             flashcards.generate_from_prompt(
                 topic_prompt=topic,
                 language=language,
-                use_rag=use_rag,
-                retriever=retriever,
+                retriever=retriever if use_rag else None,
             )
             print(flashcards.to_dict_list())
             flashcards.save_to_file()
@@ -202,16 +206,19 @@ def main_menu():
         elif choice == "6":
             topic = prompt_input("Enter the topic or material for TL;DR summary: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to summary
-            summarizer = StudySummaryGenerator(retriever=retriever)
             use_rag = (
                 prompt_input("Enrich summary with your documents? (y/N): ")
                 .strip()
                 .lower()
                 == "y"
             )
+            summarizer = StudySummaryGenerator(
+                retriever=retriever if use_rag else None
+            )
             summary = summarizer.generate_summary(
-                topic, language=language, use_rag=use_rag, retriever=retriever
+                topic,
+                language=language,
+                retriever=retriever if use_rag else None,
             )
             print("\n📘 Summary:\n")
             print(summary)
@@ -219,16 +226,19 @@ def main_menu():
         elif choice == "7":
             topic = prompt_input("Enter the topic or material for the cheat sheet: ")
             language = LanguageHandler.choose_or_detect(topic)
-            # pass retriever to cheat sheet generator
-            generator = CheatSheetGenerator(retriever=retriever)
             use_rag = (
                 prompt_input("Enrich cheat sheet with your documents? (y/N): ")
                 .strip()
                 .lower()
                 == "y"
             )
+            generator = CheatSheetGenerator(
+                retriever=retriever if use_rag else None
+            )
             cheatsheet = generator.generate_cheatsheet(
-                topic, language=language, use_rag=use_rag, retriever=retriever
+                topic,
+                language=language,
+                retriever=retriever if use_rag else None,
             )
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
