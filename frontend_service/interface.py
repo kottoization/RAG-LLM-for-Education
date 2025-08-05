@@ -140,7 +140,7 @@ def start_quiz(subject: str, use_rag: bool, lang_choice: str) -> tuple[str, dict
     """Generate quiz questions and return the first one with state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(subject)
-    questions = prepare_quiz_questions(subject, language=language, use_rag=use_rag)
+    questions = prepare_quiz_questions(subject, language=language)
     if not questions:
         return "Failed to generate quiz.", {}, ""
     state = {
