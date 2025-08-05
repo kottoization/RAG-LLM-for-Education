@@ -70,10 +70,8 @@ def chat_with_bot():
 
 
 def main_menu():
-    """
-    Main menu for the application.
-    """
-    # TODO: integrate RAG retriever
+    """Main menu for the application."""
+    # TODO: integrate RAG retriever when available
     while True:
         print("\nSelect an option:")
         print("0. Set preferred language")
