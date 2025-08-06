@@ -4,19 +4,30 @@ from __future__ import annotations
 
 from typing import Iterable, Optional, Tuple, Union
 
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.documents import Document
-from langchain_community.document_loaders import UnstructuredFileLoader
-from hashlib import sha256
+import logging
 import shutil
+from hashlib import sha256
+
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.document_loaders import UnstructuredFileLoader
+
+
+logger = logging.getLogger(__name__)
 
 
 class RAGService:
     """Lazy wrapper around a Chroma vector store."""
 
-    def __init__(self) -> None:
-        self._embeddings = OpenAIEmbeddings()
+    def __init__(
+        self,
+        embeddings: Optional[Embeddings] = None,
+        persist_directory: str = "data/chroma_db",
+    ) -> None:
+        self._embeddings: Embeddings = embeddings or OpenAIEmbeddings()
+        self._persist_directory = persist_directory
         self._vectorstore: Optional[Chroma] = None
         self._retriever = None
         self._retriever_params: Optional[Tuple[int, bool]] = None
@@ -31,18 +42,26 @@ class RAGService:
         """
 
         if self._vectorstore is None:
-            persist_dir = "data/chroma_db"
             try:
                 self._vectorstore = Chroma(
                     embedding_function=self._embeddings,
-                    persist_directory=persist_dir,
+                    persist_directory=self._persist_directory,
                 )
             except Exception:
-                shutil.rmtree(persist_dir, ignore_errors=True)
-                self._vectorstore = Chroma(
-                    embedding_function=self._embeddings,
-                    persist_directory=persist_dir,
-                )
+                shutil.rmtree(self._persist_directory, ignore_errors=True)
+                try:
+                    self._vectorstore = Chroma(
+                        embedding_function=self._embeddings,
+                        persist_directory=self._persist_directory,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Persistent Chroma store unavailable, falling back to in-memory store",
+                        exc_info=True,
+                    )
+                    self._vectorstore = Chroma(
+                        embedding_function=self._embeddings,
+                    )
         return self._vectorstore
 
     def get_retriever(self, k: int = 4, mmr: bool = True):
@@ -87,7 +106,8 @@ class RAGService:
 
         if to_add:
             store.add_documents(to_add)
-            store.persist()
+            if hasattr(store, "persist"):
+                store.persist()
 
 
 _instance: Optional[RAGService] = None
