@@ -4,6 +4,7 @@ import random
 import sys
 import warnings
 from contextlib import redirect_stdout
+import shutil
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -18,6 +19,7 @@ from LearningPlanModule import LearningPlan
 from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
 from SummaryModule import StudySummaryGenerator
 from tools.language_handler import LanguageHandler
+from tools.rag_service import RAGService
 
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv(dotenv_path)
@@ -35,6 +37,7 @@ if not os.environ.get("OPENAI_API_KEY"):
     )
 
 agent = create_agent()
+retriever = RAGService().get_retriever()
 
 CSS = """
 * {
@@ -93,7 +96,10 @@ CSS = """
 
 
 def respond(
-    message: str, history: list[tuple[str, str]], lang_choice: str
+    message: str,
+    history: list[tuple[str, str]],
+    lang_choice: str,
+    retriever=None,
 ) -> tuple[list[tuple[str, str]], str]:
     """Return updated chat history and logs.
 
@@ -110,7 +116,9 @@ def respond(
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        result, used_fallback = run_agent(message, executor=agent, return_details=True)
+        result, used_fallback = run_agent(
+            message, executor=agent, return_details=True
+        )
         result = LanguageHandler.ensure_language(result, language)
         if used_fallback:
             notice = LanguageHandler.ensure_language(
@@ -123,6 +131,25 @@ def respond(
     history[-1] = (message, result)
     logs = buffer.getvalue()
     yield history, logs
+
+
+def process_knowledge(files: list) -> str:
+    """Save uploaded files and ingest them into the RAG service."""
+    if not files:
+        return "No files uploaded."
+    save_dir = os.path.join("data", "RAG_files")
+    os.makedirs(save_dir, exist_ok=True)
+    paths: list[str] = []
+    for file in files:
+        if not file:
+            continue
+        filename = os.path.basename(file.name)
+        dest = os.path.join(save_dir, filename)
+        shutil.move(file.name, dest)
+        paths.append(dest)
+    if paths:
+        RAGService().ingest_paths(paths)
+    return f"Processed {len(paths)} file(s)."
 
 
 def _format_question(q: dict) -> str:
@@ -355,6 +382,12 @@ def build_interface() -> gr.Blocks:
             label="Language",
         )
 
+        with gr.Accordion("Upload Knowledge", open=False):
+            upload_files = gr.File(multiple=True)
+            process_btn = gr.Button("Process")
+            upload_status = gr.Markdown()
+            process_btn.click(process_knowledge, upload_files, upload_status)
+
         with gr.Tabs():
             # Chat tab
             with gr.TabItem("Chat with the bot"):
@@ -371,8 +404,16 @@ def build_interface() -> gr.Blocks:
                 def clear_history():
                     return [], ""
 
-                msg.submit(respond, [msg, chatbot, lang_select], [chatbot, logs])
-                send.click(respond, [msg, chatbot, lang_select], [chatbot, logs])
+                msg.submit(
+                    lambda m, h, l: respond(m, h, l, retriever),
+                    [msg, chatbot, lang_select],
+                    [chatbot, logs],
+                )
+                send.click(
+                    lambda m, h, l: respond(m, h, l, retriever),
+                    [msg, chatbot, lang_select],
+                    [chatbot, logs],
+                )
                 clear.click(clear_history, None, [chatbot, logs])
 
             # Quiz tab
@@ -392,7 +433,7 @@ def build_interface() -> gr.Blocks:
                 quiz_state = gr.State()
 
                 start_btn.click(
-                    start_quiz,
+                    lambda sub, lang: start_quiz(sub, lang, retriever),
                     [quiz_subject, lang_select],
                     [quiz_question, quiz_state, quiz_result],
                 )
@@ -451,7 +492,9 @@ def build_interface() -> gr.Blocks:
                     fc_state = gr.State()
 
                     fc_gen_btn.click(
-                        run_flashcards_generate,
+                        lambda topic, lang: run_flashcards_generate(
+                            topic, lang, retriever
+                        ),
                         [fc_topic, lang_select],
                         [fc_card, fc_state, fc_logs, fc_counter],
                         show_progress=False,
@@ -497,7 +540,9 @@ def build_interface() -> gr.Blocks:
                 sum_btn = gr.Button("Generate Summary")
                 sum_output = gr.Textbox(label="Summary", lines=10)
                 sum_btn.click(
-                    run_summary_interface, [sum_topic, lang_select], sum_output
+                    lambda t, l: run_summary_interface(t, l, retriever),
+                    [sum_topic, lang_select],
+                    sum_output,
                 )
 
             # Cheat sheet tab
@@ -506,7 +551,9 @@ def build_interface() -> gr.Blocks:
                 cs_btn = gr.Button("Generate Cheat Sheet")
                 cs_output = gr.Textbox(label="Cheat Sheet", lines=10)
                 cs_btn.click(
-                    run_cheatsheet_interface, [cs_topic, lang_select], cs_output
+                    lambda t, l: run_cheatsheet_interface(t, l, retriever),
+                    [cs_topic, lang_select],
+                    cs_output,
                 )
 
     return demo
