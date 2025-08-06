@@ -77,19 +77,30 @@ class RAGService:
             self._retriever_params = params
         return self._retriever
 
-    def ingest_paths(self, items: Iterable[Union[str, Document]]) -> None:
+    def ingest_paths(self, items: Iterable[Union[str, Document]]) -> Optional[str]:
         """Embed documents from ``items`` into the vector store and persist.
 
         ``items`` may be file paths or :class:`~langchain_core.documents.Document`
         instances. Chunks are deduplicated using a ``doc_hash`` metadata field to
         avoid embedding the same content multiple times.
+
+        Returns an error string if ingestion fails so callers can surface
+        actionable feedback to users.
         """
         store = self._get_vectorstore()
         documents: list[Document] = []
         for item in items:
             if isinstance(item, str):
                 loader = UnstructuredFileLoader(item)
-                documents.extend(loader.load())
+                try:
+                    documents.extend(loader.load())
+                except LookupError:
+                    msg = (
+                        "Missing NLTK data. Run nltk.download('punkt'); "
+                        "nltk.download('averaged_perceptron_tagger')"
+                    )
+                    logger.error("Failed to load %s: %s", item, msg)
+                    return msg
             else:
                 documents.append(item)
 
@@ -113,6 +124,8 @@ class RAGService:
             logger.info("Ingested %d new document(s)", len(to_add))
         else:
             logger.info("No new documents to ingest")
+
+        return None
 
 
 _instance: Optional[RAGService] = None

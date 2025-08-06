@@ -138,10 +138,15 @@ def process_knowledge(files: list) -> str:
             continue
         filename = os.path.basename(file.name)
         dest = os.path.join(save_dir, filename)
-        shutil.move(file.name, dest)
+        try:
+            shutil.copy2(file.name, dest)
+        except FileNotFoundError:
+            return f"Source file not found: {file.name}"
         paths.append(dest)
     if paths:
-        rag_service.ingest_paths(paths)
+        error = rag_service.ingest_paths(paths)
+        if error:
+            return f"Failed to ingest files: {error}"
     return f"Processed {len(paths)} file(s)."
 
 
