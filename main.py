@@ -9,6 +9,8 @@ from AgentModule.edu_agent import run_agent
 from frontend_service import launch_gradio
 from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
+from tools.ingest import ingest_folder
+from tools.rag_service import RAGService
 import os
 import sys
 import warnings
@@ -33,6 +35,9 @@ warnings.filterwarnings("ignore", category=LangChainDeprecationWarning)
 
 # Create a single agent instance for handling on-demand questions
 _agent = create_agent()
+
+# Instantiate a global retriever for RAG operations
+retriever = RAGService().get_retriever()
 
 
 def prompt_input(prompt: str) -> str:
@@ -90,6 +95,7 @@ def main_menu():
         print("6. Generate TL;DR Summary")
         print("7. Generate Cheat Sheet")
         print("8. Exit")
+        print("9. Refresh knowledge base")
 
         choice = prompt_input("Enter the number of your choice: ").strip()
 
@@ -173,6 +179,13 @@ def main_menu():
             )
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)
+
+        elif choice == "9":
+            docs, chunks = ingest_folder()
+            if docs:
+                print(f"Ingested {docs} documents as {chunks} chunks.")
+            else:
+                print("No documents found for ingestion.")
 
         elif choice in ("8", "q", "quit"):
             print("Goodbye!")
