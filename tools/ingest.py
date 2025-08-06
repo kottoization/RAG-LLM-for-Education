@@ -50,8 +50,11 @@ def load_file(path: Path) -> List[Document]:
     return docs
 
 
-def ingest_folder(folder: str = "data/RAG_files") -> None:
-    """Ingest all files from ``folder`` into the RAG vector store."""
+def ingest_folder(folder: str = "data/RAG_files") -> tuple[int, int]:
+    """Ingest all files from ``folder`` into the RAG vector store.
+
+    Returns a tuple of ``(documents, chunks)`` ingested.
+    """
     rag = get_rag_service()
     all_docs: List[Document] = []
     folder_path = Path(folder)
@@ -59,10 +62,11 @@ def ingest_folder(folder: str = "data/RAG_files") -> None:
         if file_path.is_file():
             all_docs.extend(load_file(file_path))
     if not all_docs:
-        return
+        return (0, 0)
     splitter = RecursiveCharacterTextSplitter()
     chunks = splitter.split_documents(all_docs)
     rag.ingest_paths(chunks)
+    return len(all_docs), len(chunks)
 
 
 def main() -> None:
