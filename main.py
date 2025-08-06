@@ -10,7 +10,7 @@ from frontend_service import launch_gradio
 from tools.auto_answer import auto_answer
 from tools.language_handler import LanguageHandler
 from tools.ingest import ingest_folder
-from tools.rag_service import RAGService
+from tools.rag_service import get_rag_service
 import os
 import sys
 import warnings
@@ -37,7 +37,8 @@ warnings.filterwarnings("ignore", category=LangChainDeprecationWarning)
 _agent = create_agent()
 
 # Instantiate a global retriever for RAG operations
-retriever = RAGService().get_retriever()
+_rag_service = get_rag_service()
+retriever = _rag_service.get_retriever()
 
 
 def prompt_input(prompt: str) -> str:

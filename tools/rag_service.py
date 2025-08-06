@@ -9,6 +9,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from langchain_community.document_loaders import UnstructuredFileLoader
 from hashlib import sha256
+import shutil
 
 
 class RAGService:
@@ -21,11 +22,27 @@ class RAGService:
         self._retriever_params: Optional[Tuple[int, bool]] = None
 
     def _get_vectorstore(self) -> Chroma:
+        """Return the underlying vector store, creating it if needed.
+
+        The persisted Chroma directory can occasionally become corrupted or
+        incompatible across versions. If initialization fails we wipe the
+        directory and retry so the application can still start with a fresh
+        store instead of crashing on import.
+        """
+
         if self._vectorstore is None:
-            self._vectorstore = Chroma(
-                embedding_function=self._embeddings,
-                persist_directory="data/chroma_db",
-            )
+            persist_dir = "data/chroma_db"
+            try:
+                self._vectorstore = Chroma(
+                    embedding_function=self._embeddings,
+                    persist_directory=persist_dir,
+                )
+            except Exception:
+                shutil.rmtree(persist_dir, ignore_errors=True)
+                self._vectorstore = Chroma(
+                    embedding_function=self._embeddings,
+                    persist_directory=persist_dir,
+                )
         return self._vectorstore
 
     def get_retriever(self, k: int = 4, mmr: bool = True):

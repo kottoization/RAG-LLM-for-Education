@@ -19,7 +19,7 @@ from LearningPlanModule import LearningPlan
 from QuizModule import generate_learning_plan_from_quiz, prepare_quiz_questions
 from SummaryModule import StudySummaryGenerator
 from tools.language_handler import LanguageHandler
-from tools.rag_service import RAGService
+from tools.rag_service import get_rag_service
 
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv(dotenv_path)
@@ -37,7 +37,8 @@ if not os.environ.get("OPENAI_API_KEY"):
     )
 
 agent = create_agent()
-retriever = RAGService().get_retriever()
+rag_service = get_rag_service()
+retriever = rag_service.get_retriever()
 
 CSS = """
 * {
@@ -148,7 +149,7 @@ def process_knowledge(files: list) -> str:
         shutil.move(file.name, dest)
         paths.append(dest)
     if paths:
-        RAGService().ingest_paths(paths)
+        rag_service.ingest_paths(paths)
     return f"Processed {len(paths)} file(s)."
 
 
