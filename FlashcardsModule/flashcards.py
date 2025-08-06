@@ -74,7 +74,7 @@ class FlashcardSet:
 
         ctx = ""
         if retriever:
-            docs = retriever.get_relevant_documents(topic_prompt)
+            docs = retriever.invoke(topic_prompt)
             ctx = "\n\n".join(d.page_content for d in docs)
 
         def _build_prompt(inputs):

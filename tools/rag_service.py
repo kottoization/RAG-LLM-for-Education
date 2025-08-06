@@ -48,6 +48,9 @@ class RAGService:
                     persist_directory=self._persist_directory,
                 )
             except Exception:
+                logger.warning(
+                    "Chroma persistence appears corrupted; rebuilding store"
+                )
                 shutil.rmtree(self._persist_directory, ignore_errors=True)
                 try:
                     self._vectorstore = Chroma(
@@ -57,7 +60,6 @@ class RAGService:
                 except Exception:
                     logger.warning(
                         "Persistent Chroma store unavailable, falling back to in-memory store",
-                        exc_info=True,
                     )
                     self._vectorstore = Chroma(
                         embedding_function=self._embeddings,
@@ -108,6 +110,9 @@ class RAGService:
             store.add_documents(to_add)
             if hasattr(store, "persist"):
                 store.persist()
+            logger.info("Ingested %d new document(s)", len(to_add))
+        else:
+            logger.info("No new documents to ingest")
 
 
 _instance: Optional[RAGService] = None

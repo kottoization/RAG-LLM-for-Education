@@ -2,13 +2,11 @@ import io
 import os
 import random
 import sys
-import warnings
 from contextlib import redirect_stdout
 import shutil
 
 import gradio as gr
 from dotenv import load_dotenv
-from langchain_core._api import LangChainDeprecationWarning
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from AgentModule import create_agent
@@ -24,12 +22,6 @@ from tools.rag_service import get_rag_service
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv(dotenv_path)
 
-warnings.filterwarnings(
-    "ignore",
-    message="fields may not start with an underscore",
-    category=RuntimeWarning,
-)
-warnings.filterwarnings("ignore", category=LangChainDeprecationWarning)
 
 if not os.environ.get("OPENAI_API_KEY"):
     raise RuntimeError(
@@ -384,7 +376,7 @@ def build_interface() -> gr.Blocks:
         )
 
         with gr.Accordion("Upload Knowledge", open=False):
-            upload_files = gr.File(multiple=True)
+            upload_files = gr.File(file_count="multiple")
             process_btn = gr.Button("Process")
             upload_status = gr.Markdown()
             process_btn.click(process_knowledge, upload_files, upload_status)
@@ -392,7 +384,7 @@ def build_interface() -> gr.Blocks:
         with gr.Tabs():
             # Chat tab
             with gr.TabItem("Chat with the bot"):
-                chatbot = gr.Chatbot(elem_id="chatbot")
+                chatbot = gr.Chatbot(elem_id="chatbot", type="messages")
                 with gr.Row():
                     msg = gr.Textbox(
                         placeholder="Type your message and press enter...",

@@ -47,13 +47,13 @@ def calculator(expression: str) -> str:
 
 
 @tool
-def current_date(_: str = "") -> str:
+def current_date(unused: str = "") -> str:
     """Return today's date in ISO format."""
     return datetime.utcnow().strftime("%Y-%m-%d")
 
 
 @tool
-def current_weekday(_: str = "") -> str:
+def current_weekday(unused: str = "") -> str:
     """Return the current day of the week."""
     return datetime.utcnow().strftime("%A")
 
