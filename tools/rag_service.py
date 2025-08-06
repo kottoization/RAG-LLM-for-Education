@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Iterable, Optional, Tuple, Union
 
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
+from langchain_core.documents import Document
 from langchain_community.document_loaders import UnstructuredFileLoader
+from hashlib import sha256
 
 
 class RAGService:
@@ -37,15 +39,37 @@ class RAGService:
             self._retriever_params = params
         return self._retriever
 
-    def ingest_paths(self, paths: list[str]) -> None:
-        """Embed documents from ``paths`` into the vector store and persist."""
+    def ingest_paths(self, items: Iterable[Union[str, Document]]) -> None:
+        """Embed documents from ``items`` into the vector store and persist.
+
+        ``items`` may be file paths or :class:`~langchain_core.documents.Document`
+        instances. Chunks are deduplicated using a ``doc_hash`` metadata field to
+        avoid embedding the same content multiple times.
+        """
         store = self._get_vectorstore()
-        documents = []
-        for path in paths:
-            loader = UnstructuredFileLoader(path)
-            documents.extend(loader.load())
-        if documents:
-            store.add_documents(documents)
+        documents: list[Document] = []
+        for item in items:
+            if isinstance(item, str):
+                loader = UnstructuredFileLoader(item)
+                documents.extend(loader.load())
+            else:
+                documents.append(item)
+
+        to_add: list[Document] = []
+        seen_hashes: set[str] = set()
+        for doc in documents:
+            doc_hash = doc.metadata.get("doc_hash") or sha256(
+                doc.page_content.encode("utf-8")
+            ).hexdigest()
+            doc.metadata["doc_hash"] = doc_hash
+            if doc_hash in seen_hashes:
+                continue
+            seen_hashes.add(doc_hash)
+            if not store.get(where={"doc_hash": doc_hash}, limit=1)["ids"]:
+                to_add.append(doc)
+
+        if to_add:
+            store.add_documents(to_add)
             store.persist()
 
 
