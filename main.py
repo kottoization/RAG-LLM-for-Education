@@ -60,13 +60,19 @@ def chat_with_bot():
             if query.lower() in ["exit", "q"]:
                 break
             language = LanguageHandler.choose_or_detect(query)
-            answer, used_fallback = run_agent(
+            answer, used_fallback, used_retriever = run_agent(
                 query, executor=_agent, retriever=retriever, return_details=True
             )
             answer = LanguageHandler.ensure_language(answer, language)
             if used_fallback:
                 notice = LanguageHandler.ensure_language(
                     "Wiadomość generowana przez LLM, sprawdź jej poprawność",
+                    language,
+                )
+                answer = f"{notice}\n{answer}"
+            elif used_retriever:
+                notice = LanguageHandler.ensure_language(
+                    "Wiadomość generowana na podstawie dokumentu",
                     language,
                 )
                 answer = f"{notice}\n{answer}"
@@ -84,7 +90,6 @@ def chat_with_bot():
 
 def main_menu():
     """Main menu for the application."""
-    # TODO: integrate RAG retriever when available
     while True:
         print("\nSelect an option:")
         print("0. Set preferred language")
@@ -114,7 +119,7 @@ def main_menu():
         elif choice == "2":
             subject = prompt_input("Enter the subject for the quiz: ")
             language = LanguageHandler.choose_or_detect(subject)
-            generate_quiz(subject, language=language, retriever=None)
+            generate_quiz(subject, language=language, retriever=retriever)
 
         elif choice == "3":
             print("\nSelect an option:")
@@ -126,7 +131,7 @@ def main_menu():
                 subject = prompt_input("Enter the subject for the quiz: ")
                 language = LanguageHandler.choose_or_detect(subject)
                 quiz_results = generate_quiz(
-                    subject, language=language, retriever=None
+                    subject, language=language, retriever=retriever
                 )
                 user_name = prompt_input("Enter your name: ")
                 generate_learning_plan_from_quiz(user_name, quiz_results, language)
@@ -149,9 +154,9 @@ def main_menu():
         elif choice == "4":
             topic = prompt_input("Enter a topic for flashcard generation: ")
             language = LanguageHandler.choose_or_detect(topic)
-            flashcards = FlashcardSet(topic, retriever=None)
+            flashcards = FlashcardSet(topic, retriever=retriever)
             flashcards.generate_from_prompt(
-                topic_prompt=topic, language=language, retriever=None
+                topic_prompt=topic, language=language, retriever=retriever
             )
             flashcards.save_to_file()
 
@@ -164,9 +169,9 @@ def main_menu():
         elif choice == "6":
             topic = prompt_input("Enter the topic or material for TL;DR summary: ")
             language = LanguageHandler.choose_or_detect(topic)
-            summarizer = StudySummaryGenerator()
+            summarizer = StudySummaryGenerator(retriever=retriever)
             summary = summarizer.generate_summary(
-                topic, language=language, retriever=None
+                topic, language=language, retriever=retriever
             )
             print("\n📘 Summary:\n")
             print(summary)
@@ -174,9 +179,9 @@ def main_menu():
         elif choice == "7":
             topic = prompt_input("Enter the topic or material for the cheat sheet: ")
             language = LanguageHandler.choose_or_detect(topic)
-            generator = CheatSheetGenerator()
+            generator = CheatSheetGenerator(retriever=retriever)
             cheatsheet = generator.generate_cheatsheet(
-                topic, language=language, retriever=None
+                topic, language=language, retriever=retriever
             )
             print("\n📄 Cheat Sheet:\n")
             print(cheatsheet)

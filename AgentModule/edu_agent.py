@@ -73,7 +73,7 @@ def run_agent(
     executor: AgentExecutor | None = None,
     retriever=None,
     return_details: bool = False,
-) -> str | tuple[str, bool]:
+) -> str | tuple[str, bool, bool]:
     """Run the default agent on a question and return the answer.
 
     If a ``retriever`` is supplied, relevant documents are fetched and appended
@@ -82,17 +82,19 @@ def run_agent(
     the LLM as a fallback.
 
     Set ``return_details=True`` to also return whether the LLM fallback was
-    used.
+    used and whether document context was retrieved.
     """
     executor = executor or create_agent()
     from tools.language_handler import LanguageHandler
 
+    used_retriever = False
     if retriever:
         try:
             docs = retriever.invoke(question)
             if docs:
                 context = "\n\n".join(doc.page_content for doc in docs)
                 question = f"{question}\n\nContext:\n{context}"
+                used_retriever = True
             logging.getLogger(__name__).info("Retrieved %d doc(s)", len(docs))
         except Exception as e:  # pragma: no cover - retrieval errors
             logging.getLogger(__name__).warning("Retrieval failed: %s", e)
@@ -135,5 +137,5 @@ def run_agent(
 
     output = LanguageHandler.ensure_language(output, lang)
     if return_details:
-        return output, used_fallback
+        return output, used_fallback, used_retriever
     return output

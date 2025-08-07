@@ -56,7 +56,7 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
         )
         question_chain = (
             RunnableParallel({"ctx": context_chain, "prompt": prompt_chain})
-            | RunnableLambda(lambda d: d["ctx"] + "\n\n" + d["prompt"])
+            | RunnableLambda(lambda d: d["ctx"] + "\n\n" + d["prompt"].to_string())
             | llm
         )
     else:

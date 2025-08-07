@@ -66,16 +66,22 @@ def test_create_agent_includes_rag_search(monkeypatch):
 
 def test_run_agent_no_fallback(patched_agent):
     executor = patched_agent("The capital is Warsaw")
-    output, used_fallback = ea.run_agent("Question", executor=executor, return_details=True)
+    output, used_fallback, used_retriever = ea.run_agent(
+        "Question", executor=executor, return_details=True
+    )
     assert output == "The capital is Warsaw"
     assert used_fallback is False
+    assert used_retriever is False
 
 
 def test_run_agent_with_fallback(patched_agent):
     executor = patched_agent("error: something broke")
-    output, used_fallback = ea.run_agent("Question", executor=executor, return_details=True)
+    output, used_fallback, used_retriever = ea.run_agent(
+        "Question", executor=executor, return_details=True
+    )
     assert output == "Fallback answer"
     assert used_fallback is True
+    assert used_retriever is False
 
 
 def test_run_agent_injects_retriever_context(monkeypatch):
@@ -98,9 +104,10 @@ def test_run_agent_injects_retriever_context(monkeypatch):
     monkeypatch.setattr(lh.LanguageHandler, "ensure_language", lambda text, lang: text)
 
     exec_ = RecordingExecutor()
-    output, used_fallback = ea.run_agent(
+    output, used_fallback, used_retriever = ea.run_agent(
         "Question", executor=exec_, retriever=DummyRetriever(), return_details=True
     )
     assert "context from retriever" in exec_.last_input
     assert output == "ok"
     assert used_fallback is False
+    assert used_retriever is True

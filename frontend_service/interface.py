@@ -115,7 +115,7 @@ def respond(
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        result, used_fallback = run_agent(
+        result, used_fallback, used_retriever = run_agent(
             message, executor=agent, retriever=retriever, return_details=True
         )
         result = LanguageHandler.ensure_language(result, language)
@@ -125,6 +125,12 @@ def respond(
                 language,
             )
             result = f"<div class='fallback'>{notice}<br>{result}</div>"
+        elif used_retriever:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana na podstawie dokumentu",
+                language,
+            )
+            result = f"<div class='retrieval'>{notice}<br>{result}</div>"
 
     # replace the placeholder with the actual response
     history[-1] = {"role": "assistant", "content": result}

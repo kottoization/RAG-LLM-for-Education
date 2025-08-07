@@ -70,11 +70,19 @@ def auto_answer(text: str, agent: Optional[AgentExecutor] = None) -> bool:
     if looks_like_question(text):
         agent = agent or create_agent()
         language = LanguageHandler.choose_or_detect(text)
-        answer, used_fallback = run_agent(text, executor=agent, return_details=True)
+        answer, used_fallback, used_retriever = run_agent(
+            text, executor=agent, return_details=True
+        )
         answer = LanguageHandler.ensure_language(answer, language)
         if used_fallback:
             notice = LanguageHandler.ensure_language(
                 "Wiadomość generowana przez LLM, sprawdź jej poprawność",
+                language,
+            )
+            answer = f"{notice}\n{answer}"
+        elif used_retriever:
+            notice = LanguageHandler.ensure_language(
+                "Wiadomość generowana na podstawie dokumentu",
                 language,
             )
             answer = f"{notice}\n{answer}"
