@@ -1,5 +1,6 @@
 import FlashcardsModule.flashcards as fc
 from langchain.schema.runnable import Runnable
+from langchain_core.documents import Document
 
 
 class FakeLLM(Runnable):
@@ -25,6 +26,32 @@ def test_generate_from_prompt(monkeypatch):
     assert flashcards.flashcards[0].question == "Capital of France?"
     assert flashcards.flashcards[0].answer == "Paris"
     assert len(flashcards.flashcards) == 2
+
+
+def test_generate_from_prompt_with_retriever(monkeypatch):
+    class DummyRetriever:
+        def invoke(self, query):
+            assert query == "science"
+            return [Document(page_content="extra context")]
+
+    class CapturingLLM(Runnable):
+        def __init__(self, *args, **kwargs):
+            self.last_prompt = None
+
+        def invoke(self, prompt, config=None):
+            self.last_prompt = prompt
+            class Msg:
+                content = "Q: q?\nA: a"
+            return Msg()
+
+        def batch(self, prompts, config=None, **kwargs):
+            return [self.invoke(p) for p in prompts]
+
+    llm = CapturingLLM()
+    monkeypatch.setattr(fc, "ChatOpenAI", lambda *a, **k: llm)
+    flashcards = fc.FlashcardSet("science")
+    flashcards.generate_from_prompt("science", retriever=DummyRetriever())
+    assert "extra context" in llm.last_prompt
 
 
 def test_generate_from_quiz_text():
