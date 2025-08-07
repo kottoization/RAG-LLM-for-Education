@@ -12,7 +12,10 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.document_loaders import UnstructuredFileLoader
+from langchain_community.document_loaders import (
+    UnstructuredFileLoader,
+    PyPDFLoader,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -91,13 +94,23 @@ class RAGService:
         documents: list[Document] = []
         for item in items:
             if isinstance(item, str):
-                loader = UnstructuredFileLoader(item)
+                if item.lower().endswith(".pdf"):
+                    loader = PyPDFLoader(item)
+                else:
+                    loader = UnstructuredFileLoader(item)
                 try:
                     documents.extend(loader.load())
                 except LookupError:
                     msg = (
                         "Missing NLTK data. Run nltk.download('punkt'); "
                         "nltk.download('averaged_perceptron_tagger')"
+                    )
+                    logger.error("Failed to load %s: %s", item, msg)
+                    return msg
+                except ImportError:
+                    msg = (
+                        "Missing optional PDF dependencies. Install with "
+                        "pip install 'unstructured[pdf]'"
                     )
                     logger.error("Failed to load %s: %s", item, msg)
                     return msg
