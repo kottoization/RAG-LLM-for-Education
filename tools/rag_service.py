@@ -17,6 +17,9 @@ from langchain_community.document_loaders import (
     PyPDFLoader,
 )
 
+logging.getLogger("pypdf").setLevel(logging.ERROR)
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
+
 
 logger = logging.getLogger(__name__)
 

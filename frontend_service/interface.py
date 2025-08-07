@@ -4,6 +4,7 @@ import random
 import sys
 from contextlib import redirect_stdout
 import shutil
+import logging
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -31,6 +32,8 @@ if not os.environ.get("OPENAI_API_KEY"):
 agent = create_agent()
 rag_service = get_rag_service()
 retriever = rag_service.get_retriever()
+
+logger = logging.getLogger(__name__)
 
 CSS = """
 * {
@@ -126,10 +129,22 @@ def respond(
     yield history, logs
 
 
-def process_knowledge(files: list) -> str:
-    """Save uploaded files and ingest them into the RAG service."""
+def respond_with_retriever(message: str, history: list[tuple[str, str]], lang_choice: str):
+    """Wrapper injecting the shared retriever into :func:`respond`."""
+    yield from respond(message, history, lang_choice, retriever)
+
+
+def process_knowledge(files: list):
+    """Save uploaded files and ingest them into the RAG service.
+
+    Emits status updates so the UI can show progress and final result.
+    """
+
     if not files:
-        return "No files uploaded."
+        yield "⚠️ No files uploaded."
+        return
+
+    yield "⏳ Processing..."
     save_dir = os.path.join("data", "RAG_files")
     os.makedirs(save_dir, exist_ok=True)
     paths: list[str] = []
@@ -140,14 +155,21 @@ def process_knowledge(files: list) -> str:
         dest = os.path.join(save_dir, filename)
         try:
             shutil.copy2(file.name, dest)
+            logger.info("Saved %s to %s", file.name, dest)
         except FileNotFoundError:
-            return f"Source file not found: {file.name}"
+            msg = f"❌ Source file not found: {file.name}"
+            logger.error(msg)
+            yield msg
+            return
         paths.append(dest)
     if paths:
         error = rag_service.ingest_paths(paths)
         if error:
-            return f"Failed to ingest files: {error}"
-    return f"Processed {len(paths)} file(s)."
+            msg = f"❌ Failed to ingest files: {error}"
+            logger.error(msg)
+            yield msg
+            return
+    yield f"✅ Processed {len(paths)} file(s)."
 
 
 def _format_question(q: dict) -> str:
@@ -403,12 +425,12 @@ def build_interface() -> gr.Blocks:
                     return [], ""
 
                 msg.submit(
-                    lambda m, h, l: respond(m, h, l, retriever),
+                    respond_with_retriever,
                     [msg, chatbot, lang_select],
                     [chatbot, logs],
                 )
                 send.click(
-                    lambda m, h, l: respond(m, h, l, retriever),
+                    respond_with_retriever,
                     [msg, chatbot, lang_select],
                     [chatbot, logs],
                 )
