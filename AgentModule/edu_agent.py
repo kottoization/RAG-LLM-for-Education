@@ -3,7 +3,9 @@ import logging
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
+from langchain.tools import tool
 
+from tools.rag_service import RAGService
 from tools.edu_tools import (
     wikipedia_search,
     define_word,
@@ -13,12 +15,25 @@ from tools.edu_tools import (
     detect_language,
 )
 
+
+@tool
+def rag_search(query: str) -> str:
+    """Retrieve relevant document chunks using the RAG service."""
+    try:
+        retriever = RAGService().get_retriever()
+        docs = retriever.invoke(query)
+        return "\n\n".join(doc.page_content for doc in docs)
+    except Exception as e:  # pragma: no cover - retrieval errors
+        return f"RAG search error: {e}"
+
 DEFAULT_PROMPT = PromptTemplate.from_template(
     """
 Answer the following question as best as you can using the provided tools.
 You have access to the following tools:
 
 {tools}
+
+Use rag_search to query the document database for additional context.
 
 Use the following format:
 Question: {input}
@@ -46,6 +61,7 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
         current_date,
         current_weekday,
         detect_language,
+        rag_search,
     ]
     llm = ChatOpenAI(model=model_name, temperature=0)
     agent = create_react_agent(llm, tools, DEFAULT_PROMPT)
