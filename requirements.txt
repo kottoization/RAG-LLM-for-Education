@@ -31,6 +31,8 @@ langchain-chroma
 pypdf>=3.14.0
 unstructured>=0.12.0
 pdfminer.six
+docx2txt
+python-docx
 
 # For Windows users
 python-magic-bin>=0.4.14; platform_system == "Windows"

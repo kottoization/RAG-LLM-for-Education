@@ -4,6 +4,7 @@ import base64
 from langchain_core.documents import Document
 from langchain_community.embeddings import FakeEmbeddings
 from langchain_community.document_loaders import UnstructuredFileLoader
+from docx import Document as DocxDocument
 
 from tools.rag_service import RAGService
 
@@ -68,3 +69,15 @@ def test_ingest_pdf(tmp_path):
     assert err is None
     docs = service.get_retriever().invoke("cats")
     assert any("Cats are great pets" in d.page_content for d in docs)
+
+
+def test_ingest_docx(tmp_path):
+    docx_path = tmp_path / "cats.docx"
+    doc = DocxDocument()
+    doc.add_paragraph("Cats are playful animals")
+    doc.save(docx_path)
+    service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path / "db4"))
+    err = service.ingest_paths([str(docx_path)])
+    assert err is None
+    docs = service.get_retriever().invoke("playful")
+    assert any("Cats are playful animals" in d.page_content for d in docs)

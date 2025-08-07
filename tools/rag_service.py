@@ -15,6 +15,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import (
     UnstructuredFileLoader,
     PyPDFLoader,
+    Docx2txtLoader,
 )
 
 logging.getLogger("pypdf").setLevel(logging.ERROR)
@@ -99,6 +100,8 @@ class RAGService:
             if isinstance(item, str):
                 if item.lower().endswith(".pdf"):
                     loader = PyPDFLoader(item)
+                elif item.lower().endswith(".docx"):
+                    loader = Docx2txtLoader(item)
                 else:
                     loader = UnstructuredFileLoader(item)
                 try:
@@ -111,10 +114,13 @@ class RAGService:
                     logger.error("Failed to load %s: %s", item, msg)
                     return msg
                 except ImportError:
-                    msg = (
-                        "Missing optional PDF dependencies. Install with "
-                        "pip install 'unstructured[pdf]'"
-                    )
+                    if item.lower().endswith(".docx"):
+                        msg = "Missing docx2txt dependency. Install with pip install docx2txt"
+                    else:
+                        msg = (
+                            "Missing optional PDF dependencies. Install with "
+                            "pip install 'unstructured[pdf]'"
+                        )
                     logger.error("Failed to load %s: %s", item, msg)
                     return msg
             else:
