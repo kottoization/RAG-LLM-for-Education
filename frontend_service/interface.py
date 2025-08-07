@@ -149,6 +149,8 @@ def process_knowledge(files: list):
     Emits status updates so the UI can show progress and final result.
     """
 
+    global retriever
+
     if not files:
         yield "⚠️ No files uploaded."
         return
@@ -178,6 +180,8 @@ def process_knowledge(files: list):
             logger.error(msg)
             yield msg
             return
+        # Refresh shared retriever so newly indexed docs are immediately visible
+        retriever = rag_service.get_retriever()
     yield f"✅ Processed {len(paths)} file(s)."
 
 
