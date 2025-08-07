@@ -93,10 +93,10 @@ CSS = """
 
 def respond(
     message: str,
-    history: list[tuple[str, str]],
+    history: list[dict],
     lang_choice: str,
     retriever=None,
-) -> tuple[list[tuple[str, str]], str]:
+) -> tuple[list[dict], str]:
     """Return updated chat history and logs.
 
     The user's message is yielded immediately so it appears in the UI while the
@@ -104,7 +104,10 @@ def respond(
     """
 
     # show the user's message right away with a placeholder for the response
-    history = history + [(message, "...")]
+    history = history + [
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": "..."},
+    ]
     yield history, ""
 
     code = LanguageHandler.code_from_display(lang_choice)
@@ -124,12 +127,12 @@ def respond(
             result = f"<div class='fallback'>{notice}<br>{result}</div>"
 
     # replace the placeholder with the actual response
-    history[-1] = (message, result)
+    history[-1] = {"role": "assistant", "content": result}
     logs = buffer.getvalue()
     yield history, logs
 
 
-def respond_with_retriever(message: str, history: list[tuple[str, str]], lang_choice: str):
+def respond_with_retriever(message: str, history: list[dict], lang_choice: str):
     """Wrapper injecting the shared retriever into :func:`respond`."""
     yield from respond(message, history, lang_choice, retriever)
 

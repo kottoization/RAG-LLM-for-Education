@@ -23,6 +23,9 @@ def test_respond_with_retriever_stream(monkeypatch):
     monkeypatch.setattr(interface.LanguageHandler, "code_from_display", lambda _: "en")
     monkeypatch.setattr(interface.LanguageHandler, "choose_or_detect", lambda _: "en")
     monkeypatch.setattr(interface.LanguageHandler, "ensure_language", lambda t, l: t)
-    outputs = list(interface.respond_with_retriever("hello", [], "en"))
-    assert outputs[0][0][-1][0] == "hello"
-    assert outputs[1][0][-1][1] == "answer"
+    gen = interface.respond_with_retriever("hello", [], "en")
+    first_history, _ = next(gen)
+    assert first_history[-2] == {"role": "user", "content": "hello"}
+    assert first_history[-1] == {"role": "assistant", "content": "..."}
+    second_history, _ = next(gen)
+    assert second_history[-1] == {"role": "assistant", "content": "answer"}
