@@ -1,4 +1,6 @@
 from langchain.agents import AgentExecutor, create_react_agent
+import logging
+
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
@@ -53,17 +55,31 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
 def run_agent(
     question: str,
     executor: AgentExecutor | None = None,
+    retriever=None,
     return_details: bool = False,
 ) -> str | tuple[str, bool]:
     """Run the default agent on a question and return the answer.
 
-    If the agent cannot provide a useful response (e.g. tool errors), the
-    question is answered directly by the LLM as a fallback.
+    If a ``retriever`` is supplied, relevant documents are fetched and appended
+    to the question as context before execution. If the agent cannot provide a
+    useful response (e.g. tool errors), the question is answered directly by
+    the LLM as a fallback.
 
-    Set ``return_details=True`` to also return whether the LLM fallback was used.
+    Set ``return_details=True`` to also return whether the LLM fallback was
+    used.
     """
     executor = executor or create_agent()
     from tools.language_handler import LanguageHandler
+
+    if retriever:
+        try:
+            docs = retriever.invoke(question)
+            if docs:
+                context = "\n\n".join(doc.page_content for doc in docs)
+                question = f"{question}\n\nContext:\n{context}"
+            logging.getLogger(__name__).info("Retrieved %d doc(s)", len(docs))
+        except Exception as e:  # pragma: no cover - retrieval errors
+            logging.getLogger(__name__).warning("Retrieval failed: %s", e)
 
     lang = LanguageHandler.choose_or_detect(question)
     try:

@@ -61,7 +61,7 @@ def chat_with_bot():
                 break
             language = LanguageHandler.choose_or_detect(query)
             answer, used_fallback = run_agent(
-                query, executor=_agent, return_details=True
+                query, executor=_agent, retriever=retriever, return_details=True
             )
             answer = LanguageHandler.ensure_language(answer, language)
             if used_fallback:

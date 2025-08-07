@@ -41,3 +41,31 @@ def test_run_agent_with_fallback(patched_agent):
     output, used_fallback = ea.run_agent("Question", executor=executor, return_details=True)
     assert output == "Fallback answer"
     assert used_fallback is True
+
+
+def test_run_agent_injects_retriever_context(monkeypatch):
+    from langchain_core.documents import Document
+
+    class RecordingExecutor:
+        def __init__(self):
+            self.last_input = None
+
+        def invoke(self, inputs):
+            self.last_input = inputs["input"]
+            return {"output": "ok"}
+
+    class DummyRetriever:
+        def invoke(self, query):
+            assert query == "Question"
+            return [Document(page_content="context from retriever")]
+
+    monkeypatch.setattr(lh.LanguageHandler, "choose_or_detect", lambda text: "en")
+    monkeypatch.setattr(lh.LanguageHandler, "ensure_language", lambda text, lang: text)
+
+    exec_ = RecordingExecutor()
+    output, used_fallback = ea.run_agent(
+        "Question", executor=exec_, retriever=DummyRetriever(), return_details=True
+    )
+    assert "context from retriever" in exec_.last_input
+    assert output == "ok"
+    assert used_fallback is False

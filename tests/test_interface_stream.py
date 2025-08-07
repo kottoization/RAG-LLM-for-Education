@@ -6,7 +6,7 @@ def test_respond_with_retriever_stream(monkeypatch):
     # stub dependencies before importing interface
     monkeypatch.setattr("AgentModule.create_agent", lambda: object())
 
-    def fake_run_agent(message, executor=None, return_details=False):
+    def fake_run_agent(message, executor=None, retriever=None, return_details=False):
         return "answer", False
 
     monkeypatch.setattr("AgentModule.edu_agent.run_agent", fake_run_agent)

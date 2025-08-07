@@ -116,7 +116,7 @@ def respond(
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         result, used_fallback = run_agent(
-            message, executor=agent, return_details=True
+            message, executor=agent, retriever=retriever, return_details=True
         )
         result = LanguageHandler.ensure_language(result, language)
         if used_fallback:
