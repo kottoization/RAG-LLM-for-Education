@@ -3,6 +3,7 @@ from __future__ import annotations
 from langchain.tools import tool
 from nltk.corpus import wordnet as wn
 from datetime import datetime
+import logging
 
 # Lazy import wikipedia to avoid unnecessary dependency at runtime
 try:
@@ -31,6 +32,10 @@ def define_word(word: str) -> str:
             return "No definition found."
         defs = {s.definition() for s in synsets}
         return "; ".join(sorted(defs))
+    except LookupError:
+        msg = "Missing NLTK 'wordnet' data. Run nltk.download('wordnet')"
+        logging.getLogger(__name__).error(msg)
+        return msg
     except Exception as e:  # pragma: no cover
         return f"Error retrieving definition: {e}"
 
@@ -47,13 +52,13 @@ def calculator(expression: str) -> str:
 
 
 @tool
-def current_date(_: str = "") -> str:
+def current_date(unused: str = "") -> str:
     """Return today's date in ISO format."""
     return datetime.utcnow().strftime("%Y-%m-%d")
 
 
 @tool
-def current_weekday(_: str = "") -> str:
+def current_weekday(unused: str = "") -> str:
     """Return the current day of the week."""
     return datetime.utcnow().strftime("%A")
 

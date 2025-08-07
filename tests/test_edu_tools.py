@@ -23,8 +23,8 @@ def test_define_word(monkeypatch):
 
 
 def test_calculator():
-    assert et.calculator("1 + 2*3") == "7"
-    assert "Error" in et.calculator("1/0")
+    assert et.calculator.invoke("1 + 2*3") == "7"
+    assert "Error" in et.calculator.invoke("1/0")
 
 
 def test_current_date_format():
@@ -47,4 +47,4 @@ def test_current_weekday():
 
 def test_detect_language(monkeypatch):
     monkeypatch.setattr(lh.LanguageHandler, "detect_language", lambda text: "xx")
-    assert et.detect_language("hello") == "xx"
+    assert et.detect_language.invoke("hello") == "xx"

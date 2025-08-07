@@ -66,7 +66,7 @@ Respond in {language}.
 
         retriever = retriever or self.retriever
         if retriever:
-            docs = retriever.get_relevant_documents(input_text)
+            docs = retriever.invoke(input_text)
             ctx = "\n\n".join([doc.page_content for doc in docs])
             input_text = f"{ctx}\n\n### Topic:\n{input_text}"
 

@@ -65,7 +65,7 @@ Respond only in {language}.
         ctx = ""
         # Perform retrieval-augmented generation only when a retriever is provided
         if retriever:
-            docs = retriever.get_relevant_documents(input_text)
+            docs = retriever.invoke(input_text)
             ctx = "\n\n".join(d.page_content for d in docs)
 
         response = (self.prompt | self.llm).invoke(

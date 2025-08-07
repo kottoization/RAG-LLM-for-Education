@@ -20,7 +20,7 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
 
     context = ""
     if retriever:
-        docs = retriever.get_relevant_documents(subject)
+        docs = retriever.invoke(subject)
         context = "\n\n".join([doc.page_content for doc in docs])
 
     prompt_subject = subject
@@ -46,10 +46,7 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
     if retriever:
         context_chain = RunnableLambda(
             lambda inputs: "\n\n".join(
-                [
-                    doc.page_content
-                    for doc in retriever.get_relevant_documents(inputs["topic"])
-                ]
+                [doc.page_content for doc in retriever.invoke(inputs["topic"])]
             )
         )
         prompt_chain = RunnableLambda(

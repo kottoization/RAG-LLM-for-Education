@@ -4,28 +4,73 @@ from __future__ import annotations
 
 from typing import Iterable, Optional, Tuple, Union
 
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.documents import Document
-from langchain_community.document_loaders import UnstructuredFileLoader
+import logging
+import shutil
 from hashlib import sha256
+
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.document_loaders import (
+    UnstructuredFileLoader,
+    PyPDFLoader,
+    Docx2txtLoader,
+)
+
+logging.getLogger("pypdf").setLevel(logging.ERROR)
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
+
+
+logger = logging.getLogger(__name__)
 
 
 class RAGService:
     """Lazy wrapper around a Chroma vector store."""
 
-    def __init__(self) -> None:
-        self._embeddings = OpenAIEmbeddings()
+    def __init__(
+        self,
+        embeddings: Optional[Embeddings] = None,
+        persist_directory: str = "data/chroma_db",
+    ) -> None:
+        self._embeddings: Embeddings = embeddings or OpenAIEmbeddings()
+        self._persist_directory = persist_directory
         self._vectorstore: Optional[Chroma] = None
         self._retriever = None
         self._retriever_params: Optional[Tuple[int, bool]] = None
 
     def _get_vectorstore(self) -> Chroma:
+        """Return the underlying vector store, creating it if needed.
+
+        The persisted Chroma directory can occasionally become corrupted or
+        incompatible across versions. If initialization fails we wipe the
+        directory and retry so the application can still start with a fresh
+        store instead of crashing on import.
+        """
+
         if self._vectorstore is None:
-            self._vectorstore = Chroma(
-                embedding_function=self._embeddings,
-                persist_directory="data/chroma_db",
-            )
+            try:
+                self._vectorstore = Chroma(
+                    embedding_function=self._embeddings,
+                    persist_directory=self._persist_directory,
+                )
+            except Exception:
+                logger.warning(
+                    "Chroma persistence appears corrupted; rebuilding store"
+                )
+                shutil.rmtree(self._persist_directory, ignore_errors=True)
+                try:
+                    self._vectorstore = Chroma(
+                        embedding_function=self._embeddings,
+                        persist_directory=self._persist_directory,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Persistent Chroma store unavailable, falling back to in-memory store",
+                    )
+                    self._vectorstore = Chroma(
+                        embedding_function=self._embeddings,
+                    )
         return self._vectorstore
 
     def get_retriever(self, k: int = 4, mmr: bool = True):
@@ -39,19 +84,45 @@ class RAGService:
             self._retriever_params = params
         return self._retriever
 
-    def ingest_paths(self, items: Iterable[Union[str, Document]]) -> None:
+    def ingest_paths(self, items: Iterable[Union[str, Document]]) -> Optional[str]:
         """Embed documents from ``items`` into the vector store and persist.
 
         ``items`` may be file paths or :class:`~langchain_core.documents.Document`
         instances. Chunks are deduplicated using a ``doc_hash`` metadata field to
         avoid embedding the same content multiple times.
+
+        Returns an error string if ingestion fails so callers can surface
+        actionable feedback to users.
         """
         store = self._get_vectorstore()
         documents: list[Document] = []
         for item in items:
             if isinstance(item, str):
-                loader = UnstructuredFileLoader(item)
-                documents.extend(loader.load())
+                if item.lower().endswith(".pdf"):
+                    loader = PyPDFLoader(item)
+                elif item.lower().endswith(".docx"):
+                    loader = Docx2txtLoader(item)
+                else:
+                    loader = UnstructuredFileLoader(item)
+                try:
+                    documents.extend(loader.load())
+                except LookupError:
+                    msg = (
+                        "Missing NLTK data. Run nltk.download('punkt'); "
+                        "nltk.download('averaged_perceptron_tagger')"
+                    )
+                    logger.error("Failed to load %s: %s", item, msg)
+                    return msg
+                except ImportError:
+                    if item.lower().endswith(".docx"):
+                        msg = "Missing docx2txt dependency. Install with pip install docx2txt"
+                    else:
+                        msg = (
+                            "Missing optional PDF dependencies. Install with "
+                            "pip install 'unstructured[pdf]'"
+                        )
+                    logger.error("Failed to load %s: %s", item, msg)
+                    return msg
             else:
                 documents.append(item)
 
@@ -70,7 +141,13 @@ class RAGService:
 
         if to_add:
             store.add_documents(to_add)
-            store.persist()
+            if hasattr(store, "persist"):
+                store.persist()
+            logger.info("Ingested %d new document(s)", len(to_add))
+        else:
+            logger.info("No new documents to ingest")
+
+        return None
 
 
 _instance: Optional[RAGService] = None
