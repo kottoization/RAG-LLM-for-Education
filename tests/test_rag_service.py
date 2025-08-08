@@ -14,7 +14,7 @@ def test_ingest_and_retrieve(tmp_path):
     doc = Document(page_content="Cats are great pets")
     service.ingest_paths([doc])
     retriever = service.get_retriever()
-    docs = retriever.invoke("cats")
+    docs = retriever.get_relevant_documents("cats")
     assert any("Cats are great pets" in d.page_content for d in docs)
 
 
@@ -67,7 +67,7 @@ def test_ingest_pdf(tmp_path):
     service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path / "db3"))
     err = service.ingest_paths([str(pdf_path)])
     assert err is None
-    docs = service.get_retriever().invoke("cats")
+    docs = service.get_retriever().get_relevant_documents("cats")
     assert any("Cats are great pets" in d.page_content for d in docs)
 
 
@@ -79,5 +79,5 @@ def test_ingest_docx(tmp_path):
     service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path / "db4"))
     err = service.ingest_paths([str(docx_path)])
     assert err is None
-    docs = service.get_retriever().invoke("playful")
+    docs = service.get_retriever().get_relevant_documents("playful")
     assert any("Cats are playful animals" in d.page_content for d in docs)

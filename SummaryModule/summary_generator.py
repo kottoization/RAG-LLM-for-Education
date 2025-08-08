@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from tools.language_handler import LanguageHandler
+from tools.rag_service import RAGService
 
 # TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect.
 
@@ -13,6 +14,8 @@ class StudySummaryGenerator:
 
     def __init__(self, model_name="gpt-3.5-turbo", temperature=0.5, retriever=None):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
+        if retriever is None:
+            retriever = RAGService().get_retriever()
         self.retriever = retriever  # optional document retriever
 
         self.base_prompt = PromptTemplate.from_template(
@@ -65,10 +68,13 @@ Respond in {language}.
         )
 
         retriever = retriever or self.retriever
+        if retriever is None:
+            retriever = RAGService().get_retriever()
         if retriever:
-            docs = retriever.invoke(input_text)
-            ctx = "\n\n".join([doc.page_content for doc in docs])
-            input_text = f"{ctx}\n\n### Topic:\n{input_text}"
+            docs = retriever.get_relevant_documents(input_text)
+            if docs:
+                ctx = "\n\n".join([doc.page_content for doc in docs])
+                input_text = f"{ctx}\n\n### Topic:\n{input_text}"
 
         chain = self.base_prompt | self.llm
         response = chain.invoke({"input": input_text, "language": lang})

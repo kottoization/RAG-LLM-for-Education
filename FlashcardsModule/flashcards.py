@@ -6,6 +6,7 @@ from datetime import datetime
 from langchain.schema.runnable import RunnableLambda
 from langchain_openai import ChatOpenAI
 from tools.auto_answer import auto_answer
+from tools.rag_service import RAGService
 
 
 class Flashcard:
@@ -33,6 +34,8 @@ class FlashcardSet:
     def __init__(self, topic: str, flashcards=None, retriever=None):
         self.topic = topic.strip()
         self.flashcards = flashcards if flashcards else []
+        if retriever is None:
+            retriever = RAGService().get_retriever()
         self.retriever = retriever  # optional document retriever
 
     def add_flashcard(self, flashcard: Flashcard):
@@ -71,11 +74,14 @@ class FlashcardSet:
         """
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, verbose=True)
         retriever = retriever or self.retriever
+        if retriever is None:
+            retriever = RAGService().get_retriever()
 
         ctx = ""
         if retriever:
-            docs = retriever.invoke(topic_prompt)
-            ctx = "\n\n".join(d.page_content for d in docs)
+            docs = retriever.get_relevant_documents(topic_prompt)
+            if docs:
+                ctx = "\n\n".join(d.page_content for d in docs)
 
         def _build_prompt(inputs):
             context = inputs["context"]

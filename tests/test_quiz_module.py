@@ -5,7 +5,7 @@ from QuizModule.quiz_operations import prepare_quiz_questions
 
 def test_prepare_quiz_questions_with_retriever(monkeypatch):
     class DummyRetriever:
-        def invoke(self, query):
+        def get_relevant_documents(self, query):
             assert query in {"subject", "topic1"}
             return [Document(page_content="context")]
 

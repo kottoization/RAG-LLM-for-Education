@@ -1,5 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
+from tools.rag_service import RAGService
 
 # TODO: test and optimize
 
@@ -10,6 +11,8 @@ class CheatSheetGenerator:
     """
     def __init__(self, model_name="gpt-3.5-turbo", temperature=0.3, retriever=None):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
+        if retriever is None:
+            retriever = RAGService().get_retriever()
         self.retriever = retriever  # optional document retriever
 
         # Based on the RStudio cheatsheet guidelines which suggest designing
@@ -61,12 +64,15 @@ Respond only in {language}.
             Generated cheat sheet as string.
         """
         retriever = retriever or self.retriever
+        if retriever is None:
+            retriever = RAGService().get_retriever()
 
         ctx = ""
         # Perform retrieval-augmented generation only when a retriever is provided
         if retriever:
-            docs = retriever.invoke(input_text)
-            ctx = "\n\n".join(d.page_content for d in docs)
+            docs = retriever.get_relevant_documents(input_text)
+            if docs:
+                ctx = "\n\n".join(d.page_content for d in docs)
 
         response = (self.prompt | self.llm).invoke(
             {"input": input_text, "language": language, "context": ctx}
