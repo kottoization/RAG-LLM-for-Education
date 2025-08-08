@@ -8,6 +8,7 @@ from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.auto_answer import auto_answer
+from tools.rag_service import RAGService
 
 
 def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -> list[dict]:
@@ -18,10 +19,14 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
     """
     llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
+    if retriever is None:
+        retriever = RAGService().get_retriever()
+
     context = ""
     if retriever:
-        docs = retriever.invoke(subject)
-        context = "\n\n".join([doc.page_content for doc in docs])
+        docs = retriever.get_relevant_documents(subject)
+        if docs:
+            context = "\n\n".join([doc.page_content for doc in docs])
 
     prompt_subject = subject
     if context:
@@ -44,11 +49,11 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
 
     # Generate questions in parallel
     if retriever:
-        context_chain = RunnableLambda(
-            lambda inputs: "\n\n".join(
-                [doc.page_content for doc in retriever.invoke(inputs["topic"])]
-            )
-        )
+        def _topic_ctx(inputs):
+            docs = retriever.get_relevant_documents(inputs["topic"])
+            return "\n\n".join(doc.page_content for doc in docs) if docs else ""
+
+        context_chain = RunnableLambda(_topic_ctx)
         prompt_chain = RunnableLambda(
             lambda inputs: generate_questions_prompt(
                 inputs["topic"], language=language
@@ -56,7 +61,7 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
         )
         question_chain = (
             RunnableParallel({"ctx": context_chain, "prompt": prompt_chain})
-            | RunnableLambda(lambda d: d["ctx"] + "\n\n" + d["prompt"].to_string())
+            | RunnableLambda(lambda d: (d["ctx"] + "\n\n" if d["ctx"] else "") + d["prompt"].to_string())
             | llm
         )
     else:
@@ -85,6 +90,9 @@ def generate_quiz(subject: str, language: str = "en", retriever=None):
     A ``retriever`` may be provided to enrich question prompts with additional
     context.
     """
+    if retriever is None:
+        retriever = RAGService().get_retriever()
+
     try:
         questions = prepare_quiz_questions(
             subject, language=language, retriever=retriever

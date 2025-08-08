@@ -19,7 +19,16 @@ class FakeLLM(Runnable):
 
 
 def test_generate_from_prompt(monkeypatch):
+    class DummyRetriever:
+        def get_relevant_documents(self, query):
+            return []
+
+    class DummyService:
+        def get_retriever(self):
+            return DummyRetriever()
+
     monkeypatch.setattr(fc, "ChatOpenAI", FakeLLM)
+    monkeypatch.setattr(fc, "RAGService", lambda: DummyService())
     flashcards = fc.FlashcardSet("geo")
     flashcards.generate_from_prompt("geography")
     assert flashcards.flashcards[0].question == "Capital of France?"
@@ -42,7 +51,11 @@ def test_generate_from_quiz_text():
         "d) Berlin\n"
         "Correct Answer: a"
     )
-    fs = fc.FlashcardSet("math")
+    class DummyRetriever:
+        def get_relevant_documents(self, query):
+            return []
+
+    fs = fc.FlashcardSet("math", retriever=DummyRetriever())
     fs.generate_from_quiz_text(raw)
     assert len(fs.flashcards) == 2
     assert fs.flashcards[0].question == "What is 2+2?"

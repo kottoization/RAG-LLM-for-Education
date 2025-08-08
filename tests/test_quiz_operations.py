@@ -16,7 +16,16 @@ class FakeLLM(Runnable):
 
 
 def test_prepare_quiz_questions(monkeypatch):
+    class DummyRetriever:
+        def get_relevant_documents(self, query):
+            return []
+
+    class DummyService:
+        def get_retriever(self):
+            return DummyRetriever()
+
     monkeypatch.setattr(qo, "ChatOpenAI", FakeLLM)
+    monkeypatch.setattr(qo, "RAGService", lambda: DummyService())
     questions = qo.prepare_quiz_questions("math")
     assert questions == [
         {"topic": "Algebra", "question": "What is 2+2?", "correct": "a"},
@@ -38,5 +47,14 @@ class EmptyLLM(Runnable):
 
 
 def test_prepare_quiz_questions_no_topics(monkeypatch):
+    class DummyRetriever:
+        def get_relevant_documents(self, query):
+            return []
+
+    class DummyService:
+        def get_retriever(self):
+            return DummyRetriever()
+
     monkeypatch.setattr(qo, "ChatOpenAI", EmptyLLM)
+    monkeypatch.setattr(qo, "RAGService", lambda: DummyService())
     assert qo.prepare_quiz_questions("history") == []

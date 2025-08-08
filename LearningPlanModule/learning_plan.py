@@ -2,17 +2,23 @@ import json
 import os
 from datetime import date, timedelta, datetime
 from langchain_openai import ChatOpenAI
+from tools.rag_service import RAGService
 
 # TODO: use cases from prompts for edu
 
 class LearningPlan:
-    def __init__(self, user_name, quiz_results=None, user_goals=None, user_language="en"):
+    def __init__(
+        self, user_name, quiz_results=None, user_goals=None, user_language="en", retriever=None
+    ):
         self.user_name = user_name
         self.quiz_results = quiz_results if quiz_results else {}
         self.user_goals = user_goals if user_goals else {}
         self.user_language = user_language
         self.learning_plan = []
-        self.llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, verbose=True)  # Użycie ChatOpenAI
+        self.llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, verbose=True)
+        if retriever is None:
+            retriever = RAGService().get_retriever()
+        self.retriever = retriever
 
     def analyze_quiz_results(self):
         """
@@ -77,20 +83,31 @@ class LearningPlan:
         self.learning_plan = plan
         return plan
 
-    def recommend_materials(self, topic):
+    def recommend_materials(self, topic, retriever=None):
         """
-        Retrieve recommended materials for a given topic using LLM.
+        Retrieve recommended materials for a given topic using LLM and optional RAG context.
         The response should prioritize materials in the user's language,
         but can include English resources as fallback.
         """
+        retriever = retriever or self.retriever
+        if retriever is None:
+            retriever = RAGService().get_retriever()
+
+        ctx = ""
+        if retriever:
+            docs = retriever.get_relevant_documents(topic)
+            if docs:
+                ctx = "\n\n".join(d.page_content for d in docs) + "\n\n"
+
         prompt = (
+            f"{ctx}"  # prepend context if available
             f"You are an AI assistant tasked with recommending study materials.\n"
             f"Provide a concise, high-quality list of recommended books, articles, or resources to help someone learn about '{topic}'.\n"
             f"Respond only in {self.user_language}. If resources in this language are limited, you may include a few English ones."
         )
         try:
             response = self.llm.invoke(prompt)
-            materials = response.content.split("\n")  # Each material expected on a new line
+            materials = [m for m in response.content.split("\n") if m]
             return materials
         except Exception as e:
             print(f"Error while generating materials for topic '{topic}': {e}")
