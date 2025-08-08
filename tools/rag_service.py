@@ -5,13 +5,16 @@ from __future__ import annotations
 from typing import Iterable, Optional, Tuple, Union
 
 import logging
+import os
 import shutil
 from hashlib import sha256
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_openai import OpenAIEmbeddings
+from langchain_core.prompts import PromptTemplate
+from langchain.retrievers import MultiQueryRetriever
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.document_loaders import (
     UnstructuredFileLoader,
     PyPDFLoader,
@@ -32,12 +35,35 @@ class RAGService:
         self,
         embeddings: Optional[Embeddings] = None,
         persist_directory: str = "data/chroma_db",
+        retriever_k: Optional[int] = None,
+        use_mmr: Optional[bool] = None,
+        use_multiquery: Optional[bool] = None,
+        mq_llm_model: Optional[str] = None,
+        mq_num_queries: Optional[int] = None,
+        mq_include_original: Optional[bool] = None,
     ) -> None:
         self._embeddings: Embeddings = embeddings or OpenAIEmbeddings()
         self._persist_directory = persist_directory
         self._vectorstore: Optional[Chroma] = None
         self._retriever = None
         self._retriever_params: Optional[Tuple[int, bool]] = None
+
+        # default retrieval parameters
+        self._default_k = retriever_k or int(os.getenv("RAG_K", 4))
+        env_mmr = os.getenv("RAG_USE_MMR")
+        self._default_mmr = (
+            use_mmr if use_mmr is not None else (env_mmr is None or env_mmr.lower() in {"1", "true", "yes"})
+        )
+        env_multi = os.getenv("RAG_USE_MULTIQUERY")
+        self._use_multiquery = (
+            use_multiquery if use_multiquery is not None else (env_multi is None or env_multi.lower() in {"1", "true", "yes"})
+        )
+        self._mq_llm_model = mq_llm_model or os.getenv("RAG_MQ_MODEL", "gpt-3.5-turbo")
+        self._mq_num_queries = mq_num_queries or int(os.getenv("RAG_MQ_NUM_QUERIES", 3))
+        env_inc = os.getenv("RAG_MQ_INCLUDE_ORIGINAL", "false")
+        self._mq_include_original = (
+            mq_include_original if mq_include_original is not None else env_inc.lower() in {"1", "true", "yes"}
+        )
 
     def _get_vectorstore(self) -> Chroma:
         """Return the underlying vector store, creating it if needed.
@@ -73,15 +99,39 @@ class RAGService:
                     )
         return self._vectorstore
 
-    def get_retriever(self, k: int = 4, mmr: bool = True):
+    def get_retriever(self, k: Optional[int] = None, mmr: Optional[bool] = None):
         """Return a cached retriever from the vector store."""
+        k = k or self._default_k
+        mmr = self._default_mmr if mmr is None else mmr
         params = (k, mmr)
         if self._retriever is None or self._retriever_params != params:
             search_type = "mmr" if mmr else "similarity"
-            self._retriever = self._get_vectorstore().as_retriever(
+            base = self._get_vectorstore().as_retriever(
                 search_type=search_type, search_kwargs={"k": k}
             )
             self._retriever_params = params
+            if self._use_multiquery:
+                try:
+                    llm = ChatOpenAI(model=self._mq_llm_model, temperature=0)
+                    prompt = PromptTemplate.from_template(
+                        "You are an AI language model assistant. Your task is \n    to generate {n} different versions of the given user \n    question to retrieve relevant documents from a vector  database. \n    By generating multiple perspectives on the user question, \n    your goal is to help the user overcome some of the limitations \n    of distance-based similarity search. Provide these alternative \n    questions separated by newlines. Original question: {question}".replace(
+                            "{n}", str(self._mq_num_queries)
+                        )
+                    )
+                    self._retriever = MultiQueryRetriever.from_llm(
+                        retriever=base,
+                        llm=llm,
+                        prompt=prompt,
+                        include_original=self._mq_include_original,
+                    )
+                    logger.info(
+                        "Initialized MultiQueryRetriever with model %s", self._mq_llm_model
+                    )
+                except Exception as exc:  # pragma: no cover - network issues
+                    logger.warning("MultiQueryRetriever unavailable: %s", exc)
+                    self._retriever = base
+            else:
+                self._retriever = base
         return self._retriever
 
     def ingest_paths(self, items: Iterable[Union[str, Document]]) -> Optional[str]:

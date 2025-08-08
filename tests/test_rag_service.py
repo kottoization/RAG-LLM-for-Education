@@ -10,7 +10,11 @@ from tools.rag_service import RAGService
 
 
 def test_ingest_and_retrieve(tmp_path):
-    service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path))
+    service = RAGService(
+        embeddings=FakeEmbeddings(size=32),
+        persist_directory=str(tmp_path),
+        use_multiquery=False,
+    )
     doc = Document(page_content="Cats are great pets")
     service.ingest_paths([doc])
     retriever = service.get_retriever()
@@ -25,7 +29,11 @@ def test_ingest_paths_lookup_error(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(UnstructuredFileLoader, "load", bad_load)
     file_path = tmp_path / "f.txt"
     file_path.write_text("test")
-    service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path / "db"))
+    service = RAGService(
+        embeddings=FakeEmbeddings(size=32),
+        persist_directory=str(tmp_path / "db"),
+        use_multiquery=False,
+    )
 
     caplog.set_level(logging.ERROR)
     msg = service.ingest_paths([str(file_path)])
@@ -40,7 +48,11 @@ def test_ingest_paths_import_error(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(UnstructuredFileLoader, "load", bad_load)
     file_path = tmp_path / "f.txt"
     file_path.write_text("test")
-    service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path / "db2"))
+    service = RAGService(
+        embeddings=FakeEmbeddings(size=32),
+        persist_directory=str(tmp_path / "db2"),
+        use_multiquery=False,
+    )
 
     caplog.set_level(logging.ERROR)
     msg = service.ingest_paths([str(file_path)])
@@ -64,7 +76,11 @@ def test_ingest_pdf(tmp_path):
     )
     pdf_path = tmp_path / "cats.pdf"
     pdf_path.write_bytes(base64.b64decode(pdf_b64))
-    service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path / "db3"))
+    service = RAGService(
+        embeddings=FakeEmbeddings(size=32),
+        persist_directory=str(tmp_path / "db3"),
+        use_multiquery=False,
+    )
     err = service.ingest_paths([str(pdf_path)])
     assert err is None
     docs = service.get_retriever().get_relevant_documents("cats")
@@ -76,7 +92,11 @@ def test_ingest_docx(tmp_path):
     doc = DocxDocument()
     doc.add_paragraph("Cats are playful animals")
     doc.save(docx_path)
-    service = RAGService(embeddings=FakeEmbeddings(size=32), persist_directory=str(tmp_path / "db4"))
+    service = RAGService(
+        embeddings=FakeEmbeddings(size=32),
+        persist_directory=str(tmp_path / "db4"),
+        use_multiquery=False,
+    )
     err = service.ingest_paths([str(docx_path)])
     assert err is None
     docs = service.get_retriever().get_relevant_documents("playful")

@@ -9,9 +9,14 @@ from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.auto_answer import auto_answer
 from tools.rag_service import RAGService
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -> list[dict]:
+def prepare_quiz_questions(
+    subject: str, language: str = "en", retriever=None
+) -> tuple[list[dict], bool]:
     """Return generated quiz questions.
 
     If a ``retriever`` is supplied, relevant context is fetched and appended to the
@@ -23,10 +28,13 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
         retriever = RAGService().get_retriever()
 
     context = ""
+    used_retriever = False
     if retriever:
         docs = retriever.get_relevant_documents(subject)
+        used_retriever = bool(docs)
         if docs:
             context = "\n\n".join([doc.page_content for doc in docs])
+    logger.info("Quiz generation used RAG: %s", used_retriever)
 
     prompt_subject = subject
     if context:
@@ -37,13 +45,13 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
     topic_result = llm.invoke(topic_prompt.format_prompt(subject=prompt_subject))
     topics = [t.strip() for t in topic_result.content.split("\n") if t.strip()]
     if not topics:
-        return []
+        return [], used_retriever
 
     max_questions = 20
     max_topics = min(len(topics), 5)
     topics = topics[:max_topics]
     if max_topics == 0:
-        return []
+        return [], used_retriever
 
     questions_per_topic = max_questions // max_topics
 
@@ -78,11 +86,15 @@ def prepare_quiz_questions(subject: str, language: str = "en", retriever=None) -
         q_texts = qset.content.split("\n\n")[:questions_per_topic]
         for q in q_texts:
             raw_correct = q.split("Correct Answer: ")[-1].strip().lower()
-            correct = raw_correct[0] if raw_correct and raw_correct[0] in ["a", "b", "c", "d"] else "?"
+            correct = (
+                raw_correct[0]
+                if raw_correct and raw_correct[0] in ["a", "b", "c", "d"]
+                else "?"
+            )
             text = q.rsplit("Correct Answer", 1)[0].strip()
             questions_list.append({"topic": topic, "question": text, "correct": correct})
 
-    return questions_list
+    return questions_list, used_retriever
 
 def generate_quiz(subject: str, language: str = "en", retriever=None):
     """Run an interactive quiz in the terminal and return the results.
@@ -94,12 +106,13 @@ def generate_quiz(subject: str, language: str = "en", retriever=None):
         retriever = RAGService().get_retriever()
 
     try:
-        questions = prepare_quiz_questions(
+        questions, used_retriever = prepare_quiz_questions(
             subject, language=language, retriever=retriever
         )
         if not questions:
             print("\u26a0\ufe0f No quiz topics generated.")
             return {}
+        logger.info("Interactive quiz used RAG: %s", used_retriever)
 
         print("\nStarting the quiz...\n")
         user_scores = {}

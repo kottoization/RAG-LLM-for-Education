@@ -22,5 +22,6 @@ def test_prepare_quiz_questions_with_retriever(monkeypatch):
             return [Msg() for _ in prompts]
 
     monkeypatch.setattr("QuizModule.quiz_operations.ChatOpenAI", DummyLLM)
-    questions = prepare_quiz_questions("subject", retriever=DummyRetriever())
+    questions, used = prepare_quiz_questions("subject", retriever=DummyRetriever())
     assert questions == [{"topic": "topic1", "question": "Question?", "correct": "a"}]
+    assert used is True

@@ -1,7 +1,10 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
+import logging
 from tools.language_handler import LanguageHandler
 from tools.rag_service import RAGService
+
+logger = logging.getLogger(__name__)
 
 # TODO: optimize with pipeline, quering, give more detailed contents, maybe more examples :  with ML prompt there are no examples of algorithms ect.
 
@@ -55,7 +58,7 @@ Respond in {language}.
 
     def generate_summary(
         self, input_text: str, language: str = "en", retriever=None
-    ) -> str:
+    ) -> tuple[str, bool]:
         """Generate a detailed study summary using the configured LLM and prompt.
 
         If a ``retriever`` is provided, it will be used to supply additional
@@ -70,12 +73,15 @@ Respond in {language}.
         retriever = retriever or self.retriever
         if retriever is None:
             retriever = RAGService().get_retriever()
+        used_retriever = False
         if retriever:
             docs = retriever.get_relevant_documents(input_text)
+            used_retriever = bool(docs)
             if docs:
                 ctx = "\n\n".join([doc.page_content for doc in docs])
                 input_text = f"{ctx}\n\n### Topic:\n{input_text}"
+        logger.info("Summary generation used RAG: %s", used_retriever)
 
         chain = self.base_prompt | self.llm
         response = chain.invoke({"input": input_text, "language": lang})
-        return response.content
+        return response.content, used_retriever
