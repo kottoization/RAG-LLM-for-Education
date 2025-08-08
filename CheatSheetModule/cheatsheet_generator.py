@@ -1,6 +1,9 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
+import logging
 from tools.rag_service import RAGService
+
+logger = logging.getLogger(__name__)
 
 # TODO: test and optimize
 
@@ -51,7 +54,7 @@ Respond only in {language}.
         input_text: str,
         language: str = "en",
         retriever=None
-    ) -> str:
+    ) -> tuple[str, bool]:
         """
         Generate a cheat sheet with optional retrieved context.
 
@@ -68,13 +71,16 @@ Respond only in {language}.
             retriever = RAGService().get_retriever()
 
         ctx = ""
+        used_retriever = False
         # Perform retrieval-augmented generation only when a retriever is provided
         if retriever:
             docs = retriever.get_relevant_documents(input_text)
+            used_retriever = bool(docs)
             if docs:
                 ctx = "\n\n".join(d.page_content for d in docs)
+        logger.info("Cheat sheet generation used RAG: %s", used_retriever)
 
         response = (self.prompt | self.llm).invoke(
             {"input": input_text, "language": language, "context": ctx}
         )
-        return response.content
+        return response.content, used_retriever

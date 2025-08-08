@@ -24,5 +24,6 @@ def test_generate_summary(monkeypatch):
     monkeypatch.setattr(sg, "ChatOpenAI", FakeLLM)
     monkeypatch.setattr(sg, "RAGService", lambda: DummyService())
     generator = sg.StudySummaryGenerator()
-    result = generator.generate_summary("topic")
+    result, used = generator.generate_summary("topic")
     assert result == "summary"
+    assert used is False

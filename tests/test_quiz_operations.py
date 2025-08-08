@@ -26,11 +26,12 @@ def test_prepare_quiz_questions(monkeypatch):
 
     monkeypatch.setattr(qo, "ChatOpenAI", FakeLLM)
     monkeypatch.setattr(qo, "RAGService", lambda: DummyService())
-    questions = qo.prepare_quiz_questions("math")
+    questions, used = qo.prepare_quiz_questions("math")
     assert questions == [
         {"topic": "Algebra", "question": "What is 2+2?", "correct": "a"},
         {"topic": "Geometry", "question": "What is 2+2?", "correct": "a"},
     ]
+    assert used is False
 
 
 class EmptyLLM(Runnable):
@@ -57,4 +58,6 @@ def test_prepare_quiz_questions_no_topics(monkeypatch):
 
     monkeypatch.setattr(qo, "ChatOpenAI", EmptyLLM)
     monkeypatch.setattr(qo, "RAGService", lambda: DummyService())
-    assert qo.prepare_quiz_questions("history") == []
+    qs, used = qo.prepare_quiz_questions("history")
+    assert qs == []
+    assert used is False

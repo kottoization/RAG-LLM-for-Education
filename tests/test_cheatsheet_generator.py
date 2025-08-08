@@ -24,5 +24,6 @@ def test_generate_cheatsheet(monkeypatch):
     monkeypatch.setattr(cg, "ChatOpenAI", FakeLLM)
     monkeypatch.setattr(cg, "RAGService", lambda: DummyService())
     generator = cg.CheatSheetGenerator()
-    result = generator.generate_cheatsheet("topic")
+    result, used = generator.generate_cheatsheet("topic")
     assert result == "cheatsheet"
+    assert used is False

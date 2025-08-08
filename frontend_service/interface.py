@@ -198,7 +198,7 @@ def start_quiz(
     """Generate quiz questions and return the first one with state."""
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(subject)
-    questions = prepare_quiz_questions(
+    questions, used_retriever = prepare_quiz_questions(
         subject, language=language, retriever=retriever
     )
     if not questions:
@@ -212,7 +212,12 @@ def start_quiz(
         "correct_total": 0,
     }
     first_q = _format_question(questions[0])
-    return first_q, state, ""
+    notice = (
+        "📄 Quiz generated with document context"
+        if used_retriever
+        else "⚠️ Quiz generated without document context"
+    )
+    return first_q, state, notice
 
 
 def answer_quiz(choice: str, state: dict) -> tuple[str, dict, str]:
@@ -316,11 +321,17 @@ def run_flashcards_generate(
     flashcards = FlashcardSet(topic, retriever=retriever)
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        flashcards.generate_from_prompt(
+        used_retriever = flashcards.generate_from_prompt(
             topic_prompt=topic, language=language, retriever=retriever
         )
         path = flashcards.save_to_file()
     logs = buffer.getvalue()
+    notice = (
+        "📄 Flashcards generated with document context"
+        if used_retriever
+        else "⚠️ Flashcards generated without document context"
+    )
+    logs = notice + ("\n" + logs if logs else "")
     if path:
         logs += f"\nSaved to: {path}"
     cards = flashcards.to_dict_list()
@@ -390,7 +401,15 @@ def run_summary_interface(topic: str, lang_choice: str, retriever=None) -> str:
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     summarizer = StudySummaryGenerator(retriever=retriever)
-    return summarizer.generate_summary(topic, language=language)
+    summary, used_retriever = summarizer.generate_summary(
+        topic, language=language, retriever=retriever
+    )
+    notice = (
+        "📄 Summary generated with document context"
+        if used_retriever
+        else "⚠️ Summary generated without document context"
+    )
+    return f"{notice}\n\n{summary}"
 
 
 def run_cheatsheet_interface(topic: str, lang_choice: str, retriever=None) -> str:
@@ -398,7 +417,15 @@ def run_cheatsheet_interface(topic: str, lang_choice: str, retriever=None) -> st
     code = LanguageHandler.code_from_display(lang_choice)
     language = code if code != "auto" else LanguageHandler.choose_or_detect(topic)
     generator = CheatSheetGenerator(retriever=retriever)
-    return generator.generate_cheatsheet(topic, language=language)
+    sheet, used_retriever = generator.generate_cheatsheet(
+        topic, language=language, retriever=retriever
+    )
+    notice = (
+        "📄 Cheat sheet generated with document context"
+        if used_retriever
+        else "⚠️ Cheat sheet generated without document context"
+    )
+    return f"{notice}\n\n{sheet}"
 
 
 def build_interface() -> gr.Blocks:

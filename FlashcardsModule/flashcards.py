@@ -2,11 +2,14 @@ import json
 import os
 import re
 from datetime import datetime
+import logging
 
 from langchain.schema.runnable import RunnableLambda
 from langchain_openai import ChatOpenAI
 from tools.auto_answer import auto_answer
 from tools.rag_service import RAGService
+
+logger = logging.getLogger(__name__)
 
 
 class Flashcard:
@@ -78,10 +81,13 @@ class FlashcardSet:
             retriever = RAGService().get_retriever()
 
         ctx = ""
+        used_retriever = False
         if retriever:
             docs = retriever.get_relevant_documents(topic_prompt)
+            used_retriever = bool(docs)
             if docs:
                 ctx = "\n\n".join(d.page_content for d in docs)
+        logger.info("Flashcard generation used RAG: %s", used_retriever)
 
         def _build_prompt(inputs):
             context = inputs["context"]
@@ -129,6 +135,7 @@ class FlashcardSet:
             print(f"✅ Generated {len(self.flashcards)} flashcards from prompt.")
         except Exception as e:
             print(f"❌ Error generating flashcards from prompt: {e}")
+        return used_retriever
 
     def run_cli_review(self):
         """Simple CLI loop for reviewing the flashcards."""
