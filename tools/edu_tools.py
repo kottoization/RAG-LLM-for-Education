@@ -4,6 +4,7 @@ from langchain.tools import tool
 from nltk.corpus import wordnet as wn
 from datetime import datetime
 import logging
+import nltk
 
 # Lazy import wikipedia to avoid unnecessary dependency at runtime
 try:
@@ -28,14 +29,19 @@ def define_word(word: str) -> str:
     """Give dictionary definitions for a word using WordNet."""
     try:
         synsets = wn.synsets(word)
+    except LookupError:
+        try:
+            nltk.download("wordnet", quiet=True)
+            synsets = wn.synsets(word)
+        except Exception:
+            msg = "Missing NLTK 'wordnet' data. Run nltk.download('wordnet')"
+            logging.getLogger(__name__).error(msg)
+            return msg
+    try:
         if not synsets:
             return "No definition found."
         defs = {s.definition() for s in synsets}
         return "; ".join(sorted(defs))
-    except LookupError:
-        msg = "Missing NLTK 'wordnet' data. Run nltk.download('wordnet')"
-        logging.getLogger(__name__).error(msg)
-        return msg
     except Exception as e:  # pragma: no cover
         return f"Error retrieving definition: {e}"
 
