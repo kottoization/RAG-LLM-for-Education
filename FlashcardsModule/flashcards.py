@@ -8,6 +8,7 @@ from langchain.schema.runnable import RunnableLambda
 from langchain_openai import ChatOpenAI
 from tools.auto_answer import auto_answer
 from tools.rag_service import RAGService
+from tools.rag_utils import get_context_or_empty
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +81,8 @@ class FlashcardSet:
         if retriever is None:
             retriever = RAGService().get_retriever()
 
-        ctx = ""
-        used_retriever = False
-        if retriever:
-            docs = retriever.get_relevant_documents(topic_prompt)
-            used_retriever = bool(docs)
-            if docs:
-                ctx = "\n\n".join(d.page_content for d in docs)
+        ctx = get_context_or_empty(topic_prompt, retriever)
+        used_retriever = bool(ctx)
         logger.info("Flashcard generation used RAG: %s", used_retriever)
 
         def _build_prompt(inputs):

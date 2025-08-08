@@ -2,6 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 import logging
 from tools.rag_service import RAGService
+from tools.rag_utils import get_context_or_empty
 
 logger = logging.getLogger(__name__)
 
@@ -70,14 +71,8 @@ Respond only in {language}.
         if retriever is None:
             retriever = RAGService().get_retriever()
 
-        ctx = ""
-        used_retriever = False
-        # Perform retrieval-augmented generation only when a retriever is provided
-        if retriever:
-            docs = retriever.get_relevant_documents(input_text)
-            used_retriever = bool(docs)
-            if docs:
-                ctx = "\n\n".join(d.page_content for d in docs)
+        ctx = get_context_or_empty(input_text, retriever)
+        used_retriever = bool(ctx)
         logger.info("Cheat sheet generation used RAG: %s", used_retriever)
 
         response = (self.prompt | self.llm).invoke(

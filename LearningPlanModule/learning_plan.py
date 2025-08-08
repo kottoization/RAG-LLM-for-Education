@@ -3,6 +3,7 @@ import os
 from datetime import date, timedelta, datetime
 from langchain_openai import ChatOpenAI
 from tools.rag_service import RAGService
+from tools.rag_utils import get_context_or_empty
 
 # TODO: use cases from prompts for edu
 
@@ -93,11 +94,9 @@ class LearningPlan:
         if retriever is None:
             retriever = RAGService().get_retriever()
 
-        ctx = ""
-        if retriever:
-            docs = retriever.get_relevant_documents(topic)
-            if docs:
-                ctx = "\n\n".join(d.page_content for d in docs) + "\n\n"
+        ctx = get_context_or_empty(topic, retriever)
+        if ctx:
+            ctx += "\n\n"
 
         prompt = (
             f"{ctx}"  # prepend context if available

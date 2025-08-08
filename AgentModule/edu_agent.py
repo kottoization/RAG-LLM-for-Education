@@ -6,6 +6,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain.tools import tool
 
 from tools.rag_service import RAGService
+from tools.rag_utils import get_context_or_empty
 from tools.edu_tools import (
     wikipedia_search,
     define_word,
@@ -21,8 +22,7 @@ def rag_search(query: str) -> str:
     """Retrieve relevant document chunks using the RAG service."""
     try:
         retriever = RAGService().get_retriever()
-        docs = retriever.invoke(query)
-        return "\n\n".join(doc.page_content for doc in docs)
+        return get_context_or_empty(query, retriever)
     except Exception as e:  # pragma: no cover - retrieval errors
         return f"RAG search error: {e}"
 
@@ -89,15 +89,11 @@ def run_agent(
 
     used_retriever = False
     if retriever:
-        try:
-            docs = retriever.invoke(question)
-            if docs:
-                context = "\n\n".join(doc.page_content for doc in docs)
-                question = f"{question}\n\nContext:\n{context}"
-                used_retriever = True
-            logging.getLogger(__name__).info("Retrieved %d doc(s)", len(docs))
-        except Exception as e:  # pragma: no cover - retrieval errors
-            logging.getLogger(__name__).warning("Retrieval failed: %s", e)
+        context = get_context_or_empty(question, retriever)
+        if context:
+            question = f"{question}\n\nContext:\n{context}"
+            used_retriever = True
+            logging.getLogger(__name__).info("Retrieved context for query")
 
     lang = LanguageHandler.choose_or_detect(question)
     try:
