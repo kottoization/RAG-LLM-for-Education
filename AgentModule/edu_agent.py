@@ -3,7 +3,9 @@ import logging
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
+from langchain.tools import tool
 
+from tools.rag_service import RAGService
 from tools.edu_tools import (
     wikipedia_search,
     define_word,
@@ -13,12 +15,25 @@ from tools.edu_tools import (
     detect_language,
 )
 
+
+@tool
+def rag_search(query: str) -> str:
+    """Retrieve relevant document chunks using the RAG service."""
+    try:
+        retriever = RAGService().get_retriever()
+        docs = retriever.invoke(query)
+        return "\n\n".join(doc.page_content for doc in docs)
+    except Exception as e:  # pragma: no cover - retrieval errors
+        return f"RAG search error: {e}"
+
 DEFAULT_PROMPT = PromptTemplate.from_template(
     """
 Answer the following question as best as you can using the provided tools.
 You have access to the following tools:
 
 {tools}
+
+Use rag_search to query the document database for additional context.
 
 Use the following format:
 Question: {input}
@@ -46,6 +61,7 @@ def create_agent(model_name: str = "gpt-3.5-turbo") -> AgentExecutor:
         current_date,
         current_weekday,
         detect_language,
+        rag_search,
     ]
     llm = ChatOpenAI(model=model_name, temperature=0)
     agent = create_react_agent(llm, tools, DEFAULT_PROMPT)
@@ -57,7 +73,7 @@ def run_agent(
     executor: AgentExecutor | None = None,
     retriever=None,
     return_details: bool = False,
-) -> str | tuple[str, bool]:
+) -> str | tuple[str, bool, bool]:
     """Run the default agent on a question and return the answer.
 
     If a ``retriever`` is supplied, relevant documents are fetched and appended
@@ -66,17 +82,19 @@ def run_agent(
     the LLM as a fallback.
 
     Set ``return_details=True`` to also return whether the LLM fallback was
-    used.
+    used and whether document context was retrieved.
     """
     executor = executor or create_agent()
     from tools.language_handler import LanguageHandler
 
+    used_retriever = False
     if retriever:
         try:
             docs = retriever.invoke(question)
             if docs:
                 context = "\n\n".join(doc.page_content for doc in docs)
                 question = f"{question}\n\nContext:\n{context}"
+                used_retriever = True
             logging.getLogger(__name__).info("Retrieved %d doc(s)", len(docs))
         except Exception as e:  # pragma: no cover - retrieval errors
             logging.getLogger(__name__).warning("Retrieval failed: %s", e)
@@ -119,5 +137,5 @@ def run_agent(
 
     output = LanguageHandler.ensure_language(output, lang)
     if return_details:
-        return output, used_fallback
+        return output, used_fallback, used_retriever
     return output
