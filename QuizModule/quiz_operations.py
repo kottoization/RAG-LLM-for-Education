@@ -1,7 +1,11 @@
-# QuizModule
-# ----------
-# This module provides functionality for generating subject-based quizzes
-# and corresponding learning plans based on user performance.
+"""Utility functions for quiz generation and learning plan creation.
+
+The module drives the question generation workflow by composing LangChain
+``Runnable`` chains.  Each quiz can optionally leverage a retrieval-augmented
+generation (RAG) pipeline: when a retriever is supplied, additional context is
+fetched and appended to prompts.  Generated quiz results may later feed into
+``LearningPlanModule`` to build personalised study schedules.
+"""
 
 from tools.quiz_prompts import generate_topic_list_prompt, generate_questions_prompt
 from langchain_openai import ChatOpenAI
@@ -18,10 +22,15 @@ logger = logging.getLogger(__name__)
 def prepare_quiz_questions(
     subject: str, language: str = "en", retriever=None
 ) -> tuple[list[dict], bool]:
-    """Return generated quiz questions.
+    """Generate a list of quiz questions for ``subject``.
 
-    If a ``retriever`` is supplied, relevant context is fetched and appended to the
-    prompt before question generation.
+    The function expands the subject into sub-topics and then uses parallel
+    LangChain pipelines to build multiple‑choice questions.  When a retriever is
+    provided, context retrieved from the vector store is prepended to prompts to
+    enable RAG-assisted question generation.
+
+    Returns a tuple of the question dictionaries and a flag indicating whether
+    the retriever was utilised.
     """
     llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, verbose=True)
 
