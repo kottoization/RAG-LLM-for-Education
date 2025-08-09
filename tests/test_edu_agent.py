@@ -37,7 +37,7 @@ def test_rag_search(monkeypatch):
     class DummyRetriever:
         def invoke(self, query):
             assert query == "cats"
-            return [Document(page_content="one"), Document(page_content="two")]
+            return [Document(page_content="cats one"), Document(page_content="cats two")]
 
     class DummyService:
         def get_retriever(self):
@@ -45,7 +45,7 @@ def test_rag_search(monkeypatch):
 
     monkeypatch.setattr(ea, "RAGService", lambda: DummyService())
     result = ea.rag_search("cats")
-    assert result == "one\n\ntwo"
+    assert result == "cats one\n\ncats two"
 
 
 def test_create_agent_includes_rag_search(monkeypatch):
@@ -98,7 +98,7 @@ def test_run_agent_injects_retriever_context(monkeypatch):
     class DummyRetriever:
         def invoke(self, query):
             assert query == "Question"
-            return [Document(page_content="context from retriever")]
+            return [Document(page_content="context from retriever about question")]
 
     monkeypatch.setattr(lh.LanguageHandler, "choose_or_detect", lambda text: "en")
     monkeypatch.setattr(lh.LanguageHandler, "ensure_language", lambda text, lang: text)
