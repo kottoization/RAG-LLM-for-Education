@@ -1,5 +1,7 @@
+import os
 import logging
 import base64
+import tempfile
 
 from langchain_core.documents import Document
 from langchain_community.embeddings import FakeEmbeddings
@@ -7,7 +9,48 @@ from langchain_community.document_loaders import UnstructuredFileLoader
 from docx import Document as DocxDocument
 
 from tools.rag_service import RAGService
+import tools.rag_service as rag_service
 
+
+def test_get_rag_service_lazy_singleton(monkeypatch):
+    """Ensure ``get_rag_service`` lazily creates a singleton instance."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        class TestService(rag_service.RAGService):
+            def __init__(self):
+                super().__init__(
+                    embeddings=FakeEmbeddings(size=32),
+                    persist_directory=tmpdir,
+                    use_multiquery=False,
+                )
+
+        monkeypatch.setattr(rag_service, "_instance", None)
+        monkeypatch.setattr(rag_service, "RAGService", TestService)
+
+        first = rag_service.get_rag_service()
+        second = rag_service.get_rag_service()
+        assert first is second
+
+
+def test_ingest_temporary_text_file():
+    """Ingest a temp text file and ensure retrieval returns expected chunk."""
+    with tempfile.TemporaryDirectory() as chroma_dir:
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as tmp_file:
+            tmp_file.write("The quick brown fox jumps over the lazy dog")
+            text_path = tmp_file.name
+
+        service = RAGService(
+            embeddings=FakeEmbeddings(size=32),
+            persist_directory=chroma_dir,
+            use_multiquery=False,
+        )
+        err = service.ingest_paths([text_path])
+        os.remove(text_path)
+        assert err is None
+        docs = service.get_retriever().get_relevant_documents("quick brown fox")
+        assert any(
+            "The quick brown fox jumps over the lazy dog" in d.page_content
+            for d in docs
+        )
 
 def test_ingest_and_retrieve(tmp_path):
     service = RAGService(
