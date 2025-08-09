@@ -1,12 +1,34 @@
 import logging
 import base64
-
+import tempfile
+import os
 from langchain_core.documents import Document
 from langchain_community.embeddings import FakeEmbeddings
 from langchain_community.document_loaders import UnstructuredFileLoader
 from docx import Document as DocxDocument
 
 from tools.rag_service import RAGService
+
+import tools.rag_service as rag_service
+
+
+def test_get_rag_service_lazy_singleton(monkeypatch):
+    """Ensure ``get_rag_service`` lazily creates a singleton instance."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        class TestService(rag_service.RAGService):
+            def __init__(self):
+                super().__init__(
+                    embeddings=FakeEmbeddings(size=32),
+                    persist_directory=tmpdir,
+                    use_multiquery=False,
+                )
+
+        monkeypatch.setattr(rag_service, "_instance", None)
+        monkeypatch.setattr(rag_service, "RAGService", TestService)
+
+        first = rag_service.get_rag_service()
+        second = rag_service.get_rag_service()
+        assert first is second
 
 
 def test_ingest_and_retrieve(tmp_path):
