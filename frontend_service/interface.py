@@ -5,6 +5,7 @@ import sys
 from contextlib import redirect_stdout
 import shutil
 import logging
+import re
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -183,8 +184,7 @@ def process_knowledge(files: list):
 
 def _format_question(q: dict) -> str:
     """Return formatted question text with options on separate lines."""
-    import re
-
+    
     text = q["question"]
     # ensure each answer choice appears on its own line
     text = re.sub(r"\s*([abcd]\))", r"\n\1", text, flags=re.I)
