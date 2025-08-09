@@ -1,8 +1,9 @@
 # EduGen
 
-EduGen is a modular toolkit for generating learning materials with Large
-Language Models. It exposes both a command‑line interface and a Gradio web
-application that provide several study aids:
+EduGen is a modular learning-material generation toolkit built around Large
+Language Models and retrieval‑augmented generation techniques.  It exposes a
+command‑line interface and a Gradio web application that together provide a
+suite of interactive study aids:
 
 - ReAct-based educational agent with tool augmentation.
 - Quiz generation and performance analysis.
@@ -18,6 +19,7 @@ when external knowledge bases are available.
 ## Table of Contents
 - [Features](#features)
 - [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -67,9 +69,26 @@ retrieval‑augmented generation (RAG). The primary components are:
 - **tools** – utility functions including language detection/translation, quiz
   prompt builders, auto‑answer heuristics and reusable agent tools.
 
+## Tech Stack
+EduGen is implemented primarily in **Python 3.10+** and builds on the
+following libraries and techniques:
+
+- **LangChain** for chaining LLM calls, building ReAct agents and composing
+  retrievers.
+- **OpenAI GPT‑3.5/4** models for natural language generation.
+- **Gradio** for the optional web user interface.
+- **Chroma** as the default vector store for document retrieval.
+- **Retrieval‑Augmented Generation (RAG)** with optional MultiQuery and
+  Maximal Marginal Relevance search to improve context.
+- **pytest** for automated testing.
+
+The project also includes helper utilities for language detection/translation
+and document ingestion into the vector store.
+
 ## Requirements
 - Python 3.10 or newer
-- OpenAI API key in `OPENAI_API_KEY` environment variable or `.env`
+- OpenAI API key exposed via the `OPENAI_API_KEY` environment variable or a
+  local `.env` file
 - Dependencies from `requirements.txt`
 
 ## Installation
@@ -84,6 +103,13 @@ Create a `.env` file with your OpenAI key:
 ```bash
 OPENAI_API_KEY=your-key-here
 ```
+
+### Environment variables
+Several knobs control RAG behaviour:
+
+- `RAG_K` – number of documents retrieved (default: 4)
+- `RAG_USE_MMR` – enable Maximal Marginal Relevance search (default: true)
+- `RAG_USE_MULTIQUERY` – expand queries with an LLM (default: true)
 
 ## Usage
 
