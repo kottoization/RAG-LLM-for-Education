@@ -3,6 +3,7 @@ from langchain_core.prompts import PromptTemplate
 import logging
 from tools.language_handler import LanguageHandler
 from tools.rag_service import RAGService
+from tools.rag_utils import get_context_or_empty
 
 logger = logging.getLogger(__name__)
 
@@ -73,13 +74,11 @@ Respond in {language}.
         retriever = retriever or self.retriever
         if retriever is None:
             retriever = RAGService().get_retriever()
-        used_retriever = False
-        if retriever:
-            docs = retriever.get_relevant_documents(input_text)
-            used_retriever = bool(docs)
-            if docs:
-                ctx = "\n\n".join([doc.page_content for doc in docs])
-                input_text = f"{ctx}\n\n### Topic:\n{input_text}"
+
+        ctx = get_context_or_empty(input_text, retriever)
+        used_retriever = bool(ctx)
+        if ctx:
+            input_text = f"{ctx}\n\n### Topic:\n{input_text}"
         logger.info("Summary generation used RAG: %s", used_retriever)
 
         chain = self.base_prompt | self.llm

@@ -9,6 +9,7 @@ from langchain.schema.runnable import RunnableLambda, RunnableParallel
 from LearningPlanModule.learning_plan import LearningPlan
 from tools.auto_answer import auto_answer
 from tools.rag_service import RAGService
+from tools.rag_utils import get_context_or_empty
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,13 +28,8 @@ def prepare_quiz_questions(
     if retriever is None:
         retriever = RAGService().get_retriever()
 
-    context = ""
-    used_retriever = False
-    if retriever:
-        docs = retriever.get_relevant_documents(subject)
-        used_retriever = bool(docs)
-        if docs:
-            context = "\n\n".join([doc.page_content for doc in docs])
+    context = get_context_or_empty(subject, retriever)
+    used_retriever = bool(context)
     logger.info("Quiz generation used RAG: %s", used_retriever)
 
     prompt_subject = subject
@@ -58,8 +54,7 @@ def prepare_quiz_questions(
     # Generate questions in parallel
     if retriever:
         def _topic_ctx(inputs):
-            docs = retriever.get_relevant_documents(inputs["topic"])
-            return "\n\n".join(doc.page_content for doc in docs) if docs else ""
+            return get_context_or_empty(inputs["topic"], retriever)
 
         context_chain = RunnableLambda(_topic_ctx)
         prompt_chain = RunnableLambda(
