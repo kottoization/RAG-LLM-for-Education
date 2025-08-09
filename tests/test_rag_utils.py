@@ -1,5 +1,4 @@
 from langchain_core.documents import Document
-
 from tools.rag_utils import get_context_or_empty
 
 
@@ -23,3 +22,9 @@ def test_get_context_or_empty_handles_empty():
 
 def test_get_context_or_empty_none_retriever():
     assert get_context_or_empty("q", None) == ""
+
+
+def test_get_context_or_empty_filters_irrelevant():
+    retriever = DummyRetriever([Document(page_content="quantum physics notes")])
+    assert get_context_or_empty("art history", retriever) == ""
+
