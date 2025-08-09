@@ -1,3 +1,10 @@
+"""Utilities for detecting and translating languages.
+
+This module centralizes language-related helpers such as detection,
+configuration handling and translation. It is used across the project to
+ensure consistent language behaviour.
+"""
+
 import os
 import json
 from langdetect import detect
@@ -60,8 +67,15 @@ LANGUAGE_LABELS = {
 
 
 class LanguageHandler:
+    """High level helpers for language detection and translation."""
     @staticmethod
     def detect_language(text: str) -> str:
+        """Return a language code detected from ``text``.
+
+        ``langid`` is tried first with a limited set of supported languages to
+        improve accuracy. If that fails, ``langdetect`` is used as a fallback
+        and defaults to English when detection is impossible.
+        """
         try:
             langid.set_languages([l for l in SUPPORTED_LANGUAGES if l != "auto"])
             lang, _ = langid.classify(text)
@@ -73,13 +87,15 @@ class LanguageHandler:
         return lang
 
     @staticmethod
-    def set_language(lang_code: str):
+    def set_language(lang_code: str) -> None:
+        """Persist the user's preferred language code."""
         os.makedirs("data", exist_ok=True)
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump({"language": lang_code}, f)
 
     @staticmethod
     def get_language() -> str:
+        """Return the stored preferred language or ``"auto"`` if unset."""
         if os.path.exists(CONFIG_PATH):
             with open(CONFIG_PATH, encoding="utf-8") as f:
                 config = json.load(f)
@@ -88,6 +104,7 @@ class LanguageHandler:
 
     @staticmethod
     def choose_or_detect(text: str = None) -> str:
+        """Return the configured language or detect it from ``text``."""
         user_lang = LanguageHandler.get_language()
         if user_lang == "auto" and text:
             return LanguageHandler.detect_language(text)
@@ -116,6 +133,7 @@ class LanguageHandler:
 
     @staticmethod
     def supported_languages() -> list[str]:
+        """Return the list of supported language codes."""
         return SUPPORTED_LANGUAGES
 
     @staticmethod
@@ -125,6 +143,7 @@ class LanguageHandler:
 
     @staticmethod
     def code_from_display(display: str) -> str:
+        """Map a dropdown display label back to its language code."""
         for code, label in LANGUAGE_LABELS.items():
             if label == display:
                 return code
