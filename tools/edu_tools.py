@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from tools.language_handler import LanguageHandler
 from langchain.tools import tool
 from nltk.corpus import wordnet as wn
 from datetime import datetime
@@ -72,7 +72,6 @@ def current_weekday(unused: str = "") -> str:
 @tool
 def detect_language(text: str) -> str:
     """Detect the language of a given text sample."""
-    from tools.language_handler import LanguageHandler
     try:
         return LanguageHandler.detect_language(text)
     except Exception as e:  # pragma: no cover - detection errors
