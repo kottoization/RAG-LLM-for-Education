@@ -1,3 +1,10 @@
+"""Flashcard generation and review utilities.
+
+The module provides classes for representing flashcards, generating them from
+quizzes or free‑form prompts, and persisting decks to disk.  Retrieval‑augmented
+generation (RAG) can be used to supply additional context when creating new
+cards.
+"""
 import json
 import os
 import re
