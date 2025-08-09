@@ -85,7 +85,6 @@ def test_run_agent_with_fallback(patched_agent):
 
 
 def test_run_agent_injects_retriever_context(monkeypatch):
-    from langchain_core.documents import Document
 
     class RecordingExecutor:
         def __init__(self):
