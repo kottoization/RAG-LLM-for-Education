@@ -1,6 +1,6 @@
-# EduGen
+# RAG LLM for education | EduGen
 
-EduGen is a modular learning-material generation toolkit built around Large
+RAG LLM system for personalized education, called EduGen is a modular learning-material generation toolkit built around Large
 Language Models and retrieval‑augmented generation techniques.  It exposes a
 command‑line interface and a Gradio web application that together provide a
 suite of interactive study aids:
