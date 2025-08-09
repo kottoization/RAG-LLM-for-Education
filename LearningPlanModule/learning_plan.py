@@ -1,3 +1,9 @@
+"""Creation and persistence of personalised learning plans.
+
+The module analyses quiz performance or user‑specified goals to schedule study
+sessions.  It can call an LLM to recommend resources and optionally augment
+suggestions with context retrieved from a document store.
+"""
 import json
 import os
 from datetime import date, timedelta, datetime
@@ -8,6 +14,23 @@ from tools.rag_utils import get_context_or_empty
 # TODO: use cases from prompts for edu
 
 class LearningPlan:
+    """Container for generated study activities and resource suggestions.
+
+    Parameters
+    ----------
+    user_name:
+        Name of the learner for whom the plan is generated.
+    quiz_results:
+        Mapping of topics to a ``(correct, total)`` tuple produced by the quiz
+        module.  If omitted, ``generate_plan_from_prompt`` can create a plan
+        from user goals instead.
+    user_goals:
+        Optional user-defined objectives used when quiz results are absent.
+    user_language:
+        Language code for any LLM output.
+    retriever:
+        Optional retriever for RAG‑enhanced material recommendations.
+    """
     def __init__(
         self, user_name, quiz_results=None, user_goals=None, user_language="en", retriever=None
     ):
