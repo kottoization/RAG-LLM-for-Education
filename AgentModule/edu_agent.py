@@ -4,7 +4,7 @@ import logging
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.tools import tool
-
+from tools.language_handler import LanguageHandler
 from tools.rag_service import RAGService
 from tools.rag_utils import get_context_or_empty
 from tools.edu_tools import (
@@ -84,8 +84,7 @@ def run_agent(
     Set ``return_details=True`` to also return whether the LLM fallback was
     used and whether document context was retrieved.
     """
-    executor = executor or create_agent()
-    from tools.language_handler import LanguageHandler
+    executor = executor or create_agent()    
 
     used_retriever = False
     if retriever:
