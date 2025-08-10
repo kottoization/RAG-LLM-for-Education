@@ -18,8 +18,9 @@ when external knowledge bases are available.
 
 ## Table of Contents
 - [Features](#features)
-- [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [LangChain Techniques](#langchain-techniques)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -42,6 +43,22 @@ when external knowledge bases are available.
   context.
 - Gradio interface combining chat, quiz, learning plan, flashcards, summary and
   cheat sheet workflows.
+
+## Tech Stack
+EduGen is implemented primarily in **Python 3.10+** and builds on the
+following libraries and techniques:
+
+- **LangChain** for chaining LLM calls, building ReAct agents and composing
+  retrievers.
+- **OpenAI GPT‑3.5/4** models for natural language generation.
+- **Gradio** for the optional web user interface.
+- **Chroma** as the default vector store for document retrieval.
+- **Retrieval‑Augmented Generation (RAG)** with optional MultiQuery and
+  Maximal Marginal Relevance search to improve context.
+- **pytest** for automated testing.
+
+The project also includes helper utilities for language detection/translation
+and document ingestion into the vector store.
 
 ## Architecture
 EduGen is organized as independent modules that share a common toolset and
@@ -69,21 +86,17 @@ retrieval‑augmented generation (RAG). The primary components are:
 - **tools** – utility functions including language detection/translation, quiz
   prompt builders, auto‑answer heuristics and reusable agent tools.
 
-## Tech Stack
-EduGen is implemented primarily in **Python 3.10+** and builds on the
-following libraries and techniques:
+## LangChain Techniques
+EduGen leverages several advanced LangChain retrieval features:
 
-- **LangChain** for chaining LLM calls, building ReAct agents and composing
-  retrievers.
-- **OpenAI GPT‑3.5/4** models for natural language generation.
-- **Gradio** for the optional web user interface.
-- **Chroma** as the default vector store for document retrieval.
-- **Retrieval‑Augmented Generation (RAG)** with optional MultiQuery and
-  Maximal Marginal Relevance search to improve context.
-- **pytest** for automated testing.
-
-The project also includes helper utilities for language detection/translation
-and document ingestion into the vector store.
+- **Query construction** that rewrites user questions into multiple variants to
+  broaden document matches.
+- **MultiQuery retrieval** to issue those alternative queries in parallel and
+  merge the results.
+- **Re-ranking with Maximal Marginal Relevance (MMR)** to promote diverse yet
+  relevant context snippets.
+- **ReAct-style agents** combining tool use and LLM reasoning for interactive
+  problem solving.
 
 ## Requirements
 - Python 3.10 or newer
