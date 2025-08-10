@@ -23,6 +23,7 @@ when external knowledge bases are available.
 - [Usage](#usage)
   - [CLI](#cli)
   - [Gradio Frontend](#gradio-frontend)
+  - [Frontend Views](#frontend-views)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [LangChain Techniques](#langchain-techniques)
@@ -89,6 +90,43 @@ This launches the web UI. The interface can also be run directly:
 ```bash
 python frontend_service/main.py
 ```
+
+### Frontend Views
+The Gradio interface offers a file-upload panel for ingesting custom
+knowledge and several tabs for interacting with EduGen. On the first page you can choose a language, upload your files or chat with the bot.
+<img width="1476" height="401" alt="image" src="https://github.com/user-attachments/assets/d24b17c6-bbc0-4aec-8f9a-969c4ed31ef7" />
+
+
+#### Upload Knowledge
+Import PDFs or text files to extend the retrieval database before chatting or
+generating study aids.
+<img width="1472" height="355" alt="image" src="https://github.com/user-attachments/assets/74b3e224-192e-407c-ae5d-d99903eb58d7" />
+<img width="1511" height="214" alt="image" src="https://github.com/user-attachments/assets/d5793735-30cd-4bbd-9a95-ac0f8a398a39" />
+
+#### Chat
+Free-form conversation with the ReAct agent and optional retrieval context.
+<img width="1498" height="613" alt="image" src="https://github.com/user-attachments/assets/560b6100-8269-4c13-bd87-3f3dd4e64387" />
+
+#### Quiz
+Generate and answer multiple-choice quizzes, then build a learning plan from
+your results.
+<img width="1520" height="649" alt="image" src="https://github.com/user-attachments/assets/f7f10932-26ee-4da5-8e3d-04853ab89be2" />
+
+#### Learning Plan
+Create a personalised study schedule from goals or quiz performance.
+<img width="1467" height="718" alt="image" src="https://github.com/user-attachments/assets/7dff9c93-dda2-4084-bb43-b96f31071351" />
+
+#### Flashcards
+Automatically build flashcard decks and review them within the browser.
+<img width="1490" height="756" alt="image" src="https://github.com/user-attachments/assets/d1a612e1-4e05-48f8-a947-73b14bacbf4f" />
+
+#### Summary
+Produce a multi-section summary of a topic or uploaded material.
+<img width="1476" height="730" alt="image" src="https://github.com/user-attachments/assets/a266e316-abe8-4322-a864-063c775c795e" />
+
+#### Cheat Sheet
+Generate concise exam revision sheets highlighting key facts.
+<img width="1498" height="744" alt="image" src="https://github.com/user-attachments/assets/177e3561-66df-4dab-912e-40f4bdcba3fa" />
 
 ## Tech Stack
 EduGen is implemented primarily in **Python 3.10+** and builds on the
