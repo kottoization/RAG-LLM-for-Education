@@ -57,6 +57,15 @@ when external knowledge bases are available.
 git clone https://github.com/kottoization/EduGen.git
 cd EduGen
 pip install -r requirements.txt
+
+Several knobs control RAG behaviour:
+
+- `RAG_K` – number of documents retrieved (default: 4)
+- `RAG_USE_MMR` – enable Maximal Marginal Relevance search (default: true)
+- `RAG_USE_MULTIQUERY` – expand queries with an LLM (default: true)
+
+### Environment variables
+
 ```
 
 Create a `.env` file with your OpenAI key:
@@ -64,13 +73,6 @@ Create a `.env` file with your OpenAI key:
 ```bash
 OPENAI_API_KEY=your-key-here
 ```
-
-### Environment variables
-Several knobs control RAG behaviour:
-
-- `RAG_K` – number of documents retrieved (default: 4)
-- `RAG_USE_MMR` – enable Maximal Marginal Relevance search (default: true)
-- `RAG_USE_MULTIQUERY` – expand queries with an LLM (default: true)
 
 ## Usage
 
