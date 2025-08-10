@@ -18,14 +18,15 @@ when external knowledge bases are available.
 
 ## Table of Contents
 - [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [LangChain Techniques](#langchain-techniques)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
   - [CLI](#cli)
   - [Gradio Frontend](#gradio-frontend)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [LangChain Techniques](#langchain-techniques)
+
 - [Modules](#modules)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
@@ -43,6 +44,51 @@ when external knowledge bases are available.
   context.
 - Gradio interface combining chat, quiz, learning plan, flashcards, summary and
   cheat sheet workflows.
+
+## Requirements
+- Python 3.10 or newer
+- OpenAI API key exposed via the `OPENAI_API_KEY` environment variable or a
+  local `.env` file
+- Dependencies from `requirements.txt`
+
+## Installation
+```bash
+git clone https://github.com/kottoization/EduGen.git
+cd EduGen
+pip install -r requirements.txt
+```
+
+Create a `.env` file with your OpenAI key:
+
+```bash
+OPENAI_API_KEY=your-key-here
+```
+
+### Environment variables
+Several knobs control RAG behaviour:
+
+- `RAG_K` – number of documents retrieved (default: 4)
+- `RAG_USE_MMR` – enable Maximal Marginal Relevance search (default: true)
+- `RAG_USE_MULTIQUERY` – expand queries with an LLM (default: true)
+
+## Usage
+
+### CLI
+```bash
+python main.py --cli
+```
+The menu allows chatting with the agent, generating quizzes, learning plans,
+flashcards, summaries and cheat sheets.
+
+### Gradio Frontend
+```bash
+python main.py
+```
+This launches the web UI. The interface can also be run directly:
+
+```bash
+python frontend_service/main.py
+```
 
 ## Tech Stack
 EduGen is implemented primarily in **Python 3.10+** and builds on the
@@ -97,51 +143,6 @@ EduGen leverages several advanced LangChain retrieval features:
   relevant context snippets.
 - **ReAct-style agents** combining tool use and LLM reasoning for interactive
   problem solving.
-
-## Requirements
-- Python 3.10 or newer
-- OpenAI API key exposed via the `OPENAI_API_KEY` environment variable or a
-  local `.env` file
-- Dependencies from `requirements.txt`
-
-## Installation
-```bash
-git clone https://github.com/kottoization/EduGen.git
-cd EduGen
-pip install -r requirements.txt
-```
-
-Create a `.env` file with your OpenAI key:
-
-```bash
-OPENAI_API_KEY=your-key-here
-```
-
-### Environment variables
-Several knobs control RAG behaviour:
-
-- `RAG_K` – number of documents retrieved (default: 4)
-- `RAG_USE_MMR` – enable Maximal Marginal Relevance search (default: true)
-- `RAG_USE_MULTIQUERY` – expand queries with an LLM (default: true)
-
-## Usage
-
-### CLI
-```bash
-python main.py --cli
-```
-The menu allows chatting with the agent, generating quizzes, learning plans,
-flashcards, summaries and cheat sheets.
-
-### Gradio Frontend
-```bash
-python main.py
-```
-This launches the web UI. The interface can also be run directly:
-
-```bash
-python frontend_service/main.py
-```
 
 ## Modules
 Each module can be imported and used independently. Typical entry points
