@@ -76,13 +76,13 @@ def auto_answer(text: str, agent: Optional[AgentExecutor] = None) -> bool:
         answer = LanguageHandler.ensure_language(answer, language)
         if used_fallback:
             notice = LanguageHandler.ensure_language(
-                "Wiadomość generowana przez LLM, sprawdź jej poprawność",
+                "This response may not be accurate. It was created using a LMM fallback mechanism.",
                 language,
             )
             answer = f"{notice}\n{answer}"
         elif used_retriever:
             notice = LanguageHandler.ensure_language(
-                "Wiadomość generowana na podstawie dokumentu",
+                "This response was created using a document retrieval mechanism.",
                 language,
             )
             answer = f"{notice}\n{answer}"
