@@ -38,9 +38,31 @@ QUESTION_WORDS = {
         "która",
         "które",
     },
-    "es": {"qué", "quién", "quien", "dónde", "cuándo", "cómo", "por qué"},
-    "fr": {"qui", "quoi", "où", "quand", "pourquoi", "comment"},
-    "de": {"wer", "was", "wo", "wann", "warum", "wie"},
+    "es": {
+        "qué",
+        "quién",
+        "quien",
+        "dónde",
+        "cuándo",
+        "cómo",
+        "por qué"
+    },
+    "fr": {
+        "qui",
+        "quoi",
+        "où",
+        "quand",
+        "pourquoi",
+        "comment"
+    },
+    "de": {
+        "wer",
+        "was",
+        "wo",
+        "wann",
+        "warum",
+        "wie"
+    },
 }
 
 
