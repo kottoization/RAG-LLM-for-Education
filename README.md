@@ -54,8 +54,8 @@ when external knowledge bases are available.
 
 ## Installation
 ```bash
-git clone https://github.com/kottoization/EduGen.git
-cd EduGen
+git clone https://github.com/kottoization/RAG-LLM-for-Education.git
+cd RAG-LLM-for-Education
 pip install -r requirements.txt
 
 Several knobs control RAG behaviour:
