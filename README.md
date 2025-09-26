@@ -43,8 +43,8 @@ when external knowledge bases are available.
   persistence.
 - Study summary and cheat sheet generators with optional retrieval‑augmented
   context.
-- Gradio interface combining chat, quiz, learning plan, flashcards, summary and
-  cheat sheet workflows.
+- Gradio interface combining chat, quiz, learning plan, flashcards, summaries, cheat sheets, and refreshing the knowledge base by
+ingesting local documents.
 
 ## Requirements
 - Python 3.10 or newer
