@@ -63,6 +63,10 @@ Several knobs control RAG behaviour:
 - `RAG_K` – number of documents retrieved (default: 4)
 - `RAG_USE_MMR` – enable Maximal Marginal Relevance search (default: true)
 - `RAG_USE_MULTIQUERY` – expand queries with an LLM (default: true)
+- `RAG_MQ_MODEL` – chat model used for query expansion (default: `gpt-3.5-turbo`)
+- `RAG_MQ_NUM_QUERIES` – how many rewritten queries to generate (default: 3)
+- `RAG_MQ_INCLUDE_ORIGINAL` – whether to include the user query alongside the
+  rewrites (default: false)
 
 ### Environment variables
 
