@@ -67,10 +67,10 @@ Several knobs control RAG behaviour:
 - `RAG_MQ_NUM_QUERIES` – how many rewritten queries to generate (default: 3)
 - `RAG_MQ_INCLUDE_ORIGINAL` – whether to include the user query alongside the
   rewrites (default: false)
+```
 
 ### Environment variables
 
-```
 
 Create a `.env` file with your OpenAI key:
 
