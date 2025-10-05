@@ -53,10 +53,54 @@ ingesting local documents.
 - Dependencies from `requirements.txt`
 
 ## Installation
+Follow the steps below when setting up the repository for the very first time:
+
+1. **Clone the project**
+
+   ```bash
+   git clone https://github.com/kottoization/RAG-LLM-for-Education.git
+   cd RAG-LLM-for-Education
+   ```
+
+2. **Create and activate a virtual environment** (recommended so tooling and
+   dependencies stay isolated):
+
+   <details>
+   <summary>macOS / Linux</summary>
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+   </details>
+
+   <details>
+   <summary>Windows (PowerShell)</summary>
+
+   ```powershell
+   py -3 -m venv .venv
+   .venv\Scripts\Activate.ps1
+   ```
+
+   </details>
+
+   Once activated you should see a `(.venv)` prefix in your terminal prompt.
+
+3. **Upgrade pip and install Python dependencies**
+
+   ```bash
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+### Environment variables
+
+Create a `.env` file with your OpenAI key:
+
 ```bash
-git clone https://github.com/kottoization/RAG-LLM-for-Education.git
-cd RAG-LLM-for-Education
-pip install -r requirements.txt
+OPENAI_API_KEY=your-key-here
+```
 
 Several knobs control RAG behaviour:
 
@@ -67,16 +111,6 @@ Several knobs control RAG behaviour:
 - `RAG_MQ_NUM_QUERIES` – how many rewritten queries to generate (default: 3)
 - `RAG_MQ_INCLUDE_ORIGINAL` – whether to include the user query alongside the
   rewrites (default: false)
-```
-
-### Environment variables
-
-
-Create a `.env` file with your OpenAI key:
-
-```bash
-OPENAI_API_KEY=your-key-here
-```
 
 ## Usage
 
